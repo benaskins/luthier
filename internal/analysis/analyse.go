@@ -10,68 +10,70 @@ import (
 )
 
 // scaffoldSpecSchema is the JSON Schema passed to WithStructuredOutput.
-// The anthropic adapter translates this into a constrained tool call.
+// The anthropic adapter's toPropertyDefsFromSchema expects a "properties"
+// wrapper at the top level.
 var scaffoldSpecSchema = map[string]any{
-	"name": map[string]any{
-		"type":        "string",
-		"description": "Short kebab-case project name derived from the PRD.",
-	},
-	"modules": map[string]any{
-		"type":        "array",
-		"description": "Axon modules selected for this project.",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"name":             map[string]any{"type": "string"},
-				"reason":           map[string]any{"type": "string"},
-				"is_deterministic": map[string]any{"type": "boolean"},
+	"properties": map[string]any{
+		"name": map[string]any{
+			"type":        "string",
+			"description": "Short kebab-case project name derived from the PRD.",
+		},
+		"modules": map[string]any{
+			"type":        "array",
+			"description": "Axon modules selected for this project.",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name":             map[string]any{"type": "string"},
+					"reason":           map[string]any{"type": "string"},
+					"is_deterministic": map[string]any{"type": "boolean"},
+				},
 			},
 		},
-	},
-	"boundaries": map[string]any{
-		"type":        "array",
-		"description": "Interfaces between components, labelled det or non-det.",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"from": map[string]any{"type": "string"},
-				"to":   map[string]any{"type": "string"},
-				"type": map[string]any{"type": "string", "enum": []string{"det", "non-det"}},
+		"boundaries": map[string]any{
+			"type":        "array",
+			"description": "Interfaces between components, labelled det or non-det.",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"from": map[string]any{"type": "string"},
+					"to":   map[string]any{"type": "string"},
+					"type": map[string]any{"type": "string", "enum": []string{"det", "non-det"}},
+				},
 			},
 		},
-	},
-	"files": map[string]any{
-		"type":        "array",
-		"description": "Files to write in the scaffold.",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"path":     map[string]any{"type": "string"},
-				"template": map[string]any{"type": "string"},
-				"vars":     map[string]any{"type": "object"},
+		"files": map[string]any{
+			"type":        "array",
+			"description": "Files to write in the scaffold.",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path":     map[string]any{"type": "string"},
+					"template": map[string]any{"type": "string"},
+				},
 			},
 		},
-	},
-	"plan_steps": map[string]any{
-		"type":        "array",
-		"description": "Commit-sized implementation steps.",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"title":          map[string]any{"type": "string"},
-				"description":    map[string]any{"type": "string"},
-				"commit_message": map[string]any{"type": "string"},
+		"plan_steps": map[string]any{
+			"type":        "array",
+			"description": "Commit-sized implementation steps.",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"title":          map[string]any{"type": "string"},
+					"description":    map[string]any{"type": "string"},
+					"commit_message": map[string]any{"type": "string"},
+				},
 			},
 		},
-	},
-	"gaps": map[string]any{
-		"type":        "array",
-		"description": "Ambiguities requiring conversational resolution. Empty if none.",
-		"items": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"question": map[string]any{"type": "string"},
-				"context":  map[string]any{"type": "string"},
+		"gaps": map[string]any{
+			"type":        "array",
+			"description": "Ambiguities requiring conversational resolution. Empty if none.",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"question": map[string]any{"type": "string"},
+					"context":  map[string]any{"type": "string"},
+				},
 			},
 		},
 	},

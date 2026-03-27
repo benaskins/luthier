@@ -28,9 +28,8 @@ type Boundary struct {
 
 // FileSpec describes a file to be written in the scaffold.
 type FileSpec struct {
-	Path     string            `json:"path"`
-	Template string            `json:"template"`
-	Vars     map[string]string `json:"vars"`
+	Path     string `json:"path"`
+	Template string `json:"template"`
 }
 
 // PlanStep is one commit-sized implementation step for the generated plan.
