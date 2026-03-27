@@ -1,0 +1,18 @@
+# CLAUDE.md
+
+## What This Is
+
+{{.Description}}
+
+## Build & Run
+
+```bash
+just build     # builds to bin/{{.Name}}
+just install   # installs to ~/.local/bin/{{.Name}}
+just test      # go test ./...
+just vet       # go vet ./...
+```
+
+## Plan
+
+See `plans/` for commit-sized implementation steps. Use `/iterate` to execute them.

@@ -1,0 +1,11 @@
+# {{.Name}} — Initial Build Plan
+# {{.Date}}
+
+Each step is commit-sized. Execute via `/iterate`.
+{{range $i, $step := .PlanSteps}}
+## Step {{add $i 1}} — {{$step.Title}}
+
+{{$step.Description}}
+
+Commit: `{{$step.CommitMessage}}`
+{{end}}

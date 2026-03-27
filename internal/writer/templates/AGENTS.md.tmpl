@@ -1,0 +1,23 @@
+# {{.Name}}
+
+{{.Description}}
+
+## Build & Test
+
+```bash
+go test ./...
+go vet ./...
+just build     # builds to bin/{{.Name}}
+just install   # copies to ~/.local/bin/{{.Name}}
+```
+
+## Module Selections
+
+{{range .Modules}}- **{{.Name}}**: {{.Reason}}{{if .IsDeterministic}} (deterministic){{else}} (non-deterministic){{end}}
+{{end}}
+## Deterministic / Non-deterministic Boundary
+
+| From | To | Type |
+|------|----|------|
+{{range .Boundaries}}| {{.From}} | {{.To}} | {{.Type}} |
+{{end}}

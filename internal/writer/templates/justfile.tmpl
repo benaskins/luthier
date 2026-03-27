@@ -1,0 +1,11 @@
+build:
+    go build -o bin/{{.Name}} ./cmd/{{.Name}}
+
+install: build
+    cp bin/{{.Name}} ~/.local/bin/{{.Name}}
+
+test:
+    go test ./...
+
+vet:
+    go vet ./...
