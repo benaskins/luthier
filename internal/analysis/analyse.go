@@ -42,17 +42,6 @@ var scaffoldSpecSchema = map[string]any{
 				},
 			},
 		},
-		"files": map[string]any{
-			"type":        "array",
-			"description": "Files to write in the scaffold.",
-			"items": map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"path":     map[string]any{"type": "string"},
-					"template": map[string]any{"type": "string"},
-				},
-			},
-		},
 		"plan_steps": map[string]any{
 			"type":        "array",
 			"description": "Commit-sized implementation steps.",

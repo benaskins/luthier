@@ -40,13 +40,6 @@ func TestAnalyse_ParsesStructuredResponse(t *testing.T) {
 						"boundaries": []any{
 							map[string]any{"from": "handler", "to": "llm", "type": "non-det"},
 						},
-						"files": []any{
-							map[string]any{
-								"path":     "cmd/my-service/main.go",
-								"template": "main",
-								"vars":     map[string]any{"Name": "my-service"},
-							},
-						},
 						"plan_steps": []any{
 							map[string]any{
 								"title":          "Scaffold repo",
@@ -83,9 +76,6 @@ func TestAnalyse_ParsesStructuredResponse(t *testing.T) {
 	}
 	if len(spec.Boundaries) != 1 || spec.Boundaries[0].Type != "non-det" {
 		t.Errorf("Boundaries = %+v, want one non-det boundary", spec.Boundaries)
-	}
-	if len(spec.Files) != 1 {
-		t.Errorf("len(Files) = %d, want 1", len(spec.Files))
 	}
 	if len(spec.PlanSteps) != 1 {
 		t.Errorf("len(PlanSteps) = %d, want 1", len(spec.PlanSteps))

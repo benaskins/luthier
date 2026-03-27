@@ -7,7 +7,6 @@ type ScaffoldSpec struct {
 	Name       string            `json:"name"`
 	Modules    []ModuleSelection `json:"modules"`
 	Boundaries []Boundary        `json:"boundaries"`
-	Files      []FileSpec        `json:"files"`
 	PlanSteps  []PlanStep        `json:"plan_steps"`
 	Gaps       []Gap             `json:"gaps"`
 }
@@ -24,12 +23,6 @@ type Boundary struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 	Type string `json:"type"` // "det" or "non-det"
-}
-
-// FileSpec describes a file to be written in the scaffold.
-type FileSpec struct {
-	Path     string `json:"path"`
-	Template string `json:"template"`
 }
 
 // PlanStep is one commit-sized implementation step for the generated plan.

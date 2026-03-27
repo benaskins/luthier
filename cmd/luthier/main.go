@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -60,7 +61,29 @@ func run() error {
 		return fmt.Errorf("write: %w", err)
 	}
 
+	fmt.Fprintln(os.Stderr, "luthier: verifying scaffold builds…")
+	if err := verifyBuild(outDir); err != nil {
+		return fmt.Errorf("build verification: %w", err)
+	}
+
 	fmt.Println(outDir)
+	return nil
+}
+
+func verifyBuild(dir string) error {
+	tidy := exec.Command("go", "mod", "tidy")
+	tidy.Dir = dir
+	tidy.Stderr = os.Stderr
+	if out, err := tidy.Output(); err != nil {
+		return fmt.Errorf("go mod tidy: %w\n%s", err, out)
+	}
+
+	build := exec.Command("go", "build", "./...")
+	build.Dir = dir
+	build.Stderr = os.Stderr
+	if out, err := build.Output(); err != nil {
+		return fmt.Errorf("go build: %w\n%s", err, out)
+	}
 	return nil
 }
 
