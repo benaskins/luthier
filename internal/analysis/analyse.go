@@ -20,13 +20,14 @@ var scaffoldSpecSchema = map[string]any{
 		},
 		"modules": map[string]any{
 			"type":        "array",
-			"description": "Axon modules selected for this project. Use exact module names from the catalog (e.g. axon-loop, axon-talk, axon-tool).",
+			"description": "Axon modules selected for this project.",
 			"items": map[string]any{
-				"type": "object",
+				"type":        "object",
+				"description": "A module selection with its name, rationale, and determinism classification.",
 				"properties": map[string]any{
 					"name":             map[string]any{"type": "string", "description": "Exact module name from the catalog (e.g. axon-loop)."},
-					"reason":           map[string]any{"type": "string"},
-					"is_deterministic": map[string]any{"type": "boolean"},
+					"reason":           map[string]any{"type": "string", "description": "Why this module was selected for this project."},
+					"is_deterministic": map[string]any{"type": "boolean", "description": "True if this module's contribution is deterministic."},
 				},
 				"required": []string{"name", "reason", "is_deterministic"},
 			},
