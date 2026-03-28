@@ -16,12 +16,20 @@ func axonFactSnippet() Snippet {
 		Module: "axon-fact",
 		Imports: []Import{
 			{Path: "context"},
+			{Path: "fmt"},
 			{Path: "log/slog"},
+			{Path: "os"},
+			{Path: "github.com/benaskins/axon"},
 			{Path: "github.com/benaskins/axon-fact", Alias: "fact"},
 		},
-		Requires: []string{"github.com/benaskins/axon-fact"},
-		Deps:     []string{"axon"},
-		Setup: `	events := fact.NewPostgresStore(db,
+		Requires: []string{"github.com/benaskins/axon", "github.com/benaskins/axon-fact"},
+		Setup: `	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		fmt.Fprintln(os.Stderr, "DATABASE_URL must be set")
+		os.Exit(1)
+	}
+	db := axon.MustOpenDB(dsn, "app")
+	events := fact.NewPostgresStore(db,
 		// TODO: register domain projectors here
 	)
 	if err := events.Replay(context.Background()); err != nil {
@@ -38,11 +46,10 @@ func axonTaskSnippet() Snippet {
 			{Path: "github.com/benaskins/axon-task", Alias: "task"},
 		},
 		Requires: []string{"github.com/benaskins/axon-task"},
-		Deps:     []string{"axon"},
+		Deps:     []string{"axon-fact"},
 		Setup: `	taskStore := task.NewPostgresStore(db)
-	executor := task.NewExecutor("agent", ".", "sonnet", taskStore)
-	// TODO: register workers with executor.RegisterWorker(name, worker)
-	taskHandler := task.NewTaskHandler(executor, "")`,
+	_ = task.NewExecutor("agent", ".", "sonnet", taskStore)
+	// TODO: register workers with executor.RegisterWorker(name, worker)`,
 	}
 }
 
@@ -50,17 +57,17 @@ func axonAuthSnippet() Snippet {
 	return Snippet{
 		Module: "axon-auth",
 		Imports: []Import{
+			{Path: "os"},
 			{Path: "github.com/benaskins/axon"},
 		},
 		Requires: []string{"github.com/benaskins/axon"},
-		Deps:     []string{"axon"},
 		Setup: `	authURL := os.Getenv("AUTH_URL")
 	if authURL == "" {
 		authURL = "http://localhost:9000"
 	}
 	authClient := axon.NewAuthClientPlain(authURL)
 	defer authClient.Close()
-	requireAuth := axon.RequireAuth(authClient)`,
+	_ = axon.RequireAuth(authClient)`,
 	}
 }
 
@@ -72,9 +79,7 @@ func axonMemoSnippet() Snippet {
 		},
 		Requires: []string{"github.com/benaskins/axon-memo"},
 		Deps:     []string{"axon"},
-		Setup: `	memoSource := memo.NewConversationClient(envOrDefault("CHAT_SERVICE_URL", "http://localhost:8080"))
-	// TODO: wire generate and embed functions for your LLM provider
-	// memoExtractor := memo.NewExtractor(memoStore, memoSource, generate, embed)
-	// memoRetriever := memo.NewRetriever(memoStore, embed)`,
+		Setup: `	_ = memo.NewConversationClient(envOrDefault("CHAT_SERVICE_URL", "http://localhost:8080"))
+	// TODO: wire memo extractor, retriever, and consolidator`,
 	}
 }

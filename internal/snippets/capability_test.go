@@ -25,17 +25,18 @@ func TestCapabilitySnippetsRegister(t *testing.T) {
 	}
 }
 
-func TestCapabilitySnippetsDependOnAxon(t *testing.T) {
+func TestCapabilitySnippetsRequireAxon(t *testing.T) {
 	for _, s := range CapabilitySnippets() {
 		found := false
-		for _, d := range s.Deps {
-			if d == "axon" {
+		for _, r := range s.Requires {
+			if r == "github.com/benaskins/axon" || r == "github.com/benaskins/axon-fact" ||
+				r == "github.com/benaskins/axon-task" || r == "github.com/benaskins/axon-memo" {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("snippet %q should depend on axon", s.Module)
+			t.Errorf("snippet %q should require an axon module", s.Module)
 		}
 	}
 }

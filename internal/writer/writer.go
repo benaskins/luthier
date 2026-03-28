@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -40,8 +41,15 @@ func Write(spec *analysis.ScaffoldSpec, outDir string, composed *ComposedOutput)
 		return fmt.Errorf("writer: create output dir: %w", err)
 	}
 
+	home, _ := os.UserHomeDir()
 	funcMap := template.FuncMap{
 		"add": func(a, b int) int { return a + b },
+		"localReplace": func(mod string) string {
+			// "github.com/benaskins/axon-talk" -> "/Users/x/dev/lamina/axon-talk"
+			parts := strings.Split(mod, "/")
+			short := parts[len(parts)-1]
+			return filepath.Join(home, "dev", "lamina", short)
+		},
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/*.tmpl")

@@ -93,7 +93,7 @@ func axonToolSnippet() Snippet {
 			{Path: "github.com/benaskins/axon-tool", Alias: "tool"},
 		},
 		Requires: []string{"github.com/benaskins/axon-tool"},
-		Setup:    `	allTools := tool.NewRegistry()`,
+		Setup:    `	allTools := map[string]tool.ToolDef{}`,
 	}
 }
 
@@ -105,7 +105,7 @@ func axonLoopSnippet() Snippet {
 		},
 		Requires: []string{"github.com/benaskins/axon-loop"},
 		Deps:     []string{"axon-talk", "axon-tool"},
-		Setup: `	loopCfg := loop.Config{
+		Setup: `	_ = loop.RunConfig{
 		Client: client,
 		Tools:  allTools,
 	}`,

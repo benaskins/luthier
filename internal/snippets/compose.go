@@ -23,6 +23,10 @@ func Compose(name string, snippets []Snippet) (string, error) {
 	if len(imports) > 0 {
 		b.WriteString("import (\n")
 		for _, imp := range imports {
+			if imp.Path == "" {
+				b.WriteString("\n") // blank line separator between stdlib and external
+				continue
+			}
 			if imp.Alias != "" {
 				fmt.Fprintf(&b, "\t%s %q\n", imp.Alias, imp.Path)
 			} else {

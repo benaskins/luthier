@@ -168,24 +168,24 @@ func TestComposeWithCoreSnippets(t *testing.T) {
 	}
 
 	// Should have all three modules wired in dependency order
-	if !strings.Contains(src, "selectLLMClient()") {
+	if !strings.Contains(src, "client := selectLLMClient()") {
 		t.Error("missing axon-talk setup")
 	}
-	if !strings.Contains(src, "tool.NewRegistry()") {
+	if !strings.Contains(src, "tool.ToolDef") {
 		t.Error("missing axon-tool setup")
 	}
-	if !strings.Contains(src, "loop.Config") {
+	if !strings.Contains(src, "loop.RunConfig") {
 		t.Error("missing axon-loop setup")
 	}
 
-	// Verify ordering
-	talkIdx := strings.Index(src, "selectLLMClient()")
-	toolIdx := strings.Index(src, "tool.NewRegistry()")
-	loopIdx := strings.Index(src, "loop.Config")
+	// Verify setup ordering within main() — use the assignment lines, not helper defs
+	talkIdx := strings.Index(src, "client := selectLLMClient()")
+	toolIdx := strings.Index(src, "allTools := map[string]tool.ToolDef")
+	loopIdx := strings.Index(src, "loop.RunConfig{")
 	if talkIdx >= loopIdx {
-		t.Error("axon-talk should be before axon-loop")
+		t.Errorf("axon-talk setup (idx %d) should be before axon-loop setup (idx %d)", talkIdx, loopIdx)
 	}
 	if toolIdx >= loopIdx {
-		t.Error("axon-tool should be before axon-loop")
+		t.Errorf("axon-tool setup (idx %d) should be before axon-loop setup (idx %d)", toolIdx, loopIdx)
 	}
 }
