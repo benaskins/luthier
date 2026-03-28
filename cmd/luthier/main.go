@@ -82,8 +82,11 @@ func composeFromSpec(spec *analysis.ScaffoldSpec) *writer.ComposedOutput {
 
 	var moduleNames []string
 	for _, m := range spec.Modules {
-		if _, ok := reg.Get(m.Name); ok {
-			moduleNames = append(moduleNames, m.Name)
+		if s, ok := reg.Get(m.Name); ok {
+			// Only include snippets that have wiring code
+			if s.Setup != "" || s.Helpers != "" {
+				moduleNames = append(moduleNames, m.Name)
+			}
 		}
 	}
 
