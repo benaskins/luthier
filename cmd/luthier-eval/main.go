@@ -12,6 +12,7 @@ import (
 	talk "github.com/benaskins/axon-talk"
 	"github.com/benaskins/axon-talk/anthropic"
 	cf "github.com/benaskins/axon-talk/cloudflare"
+	"github.com/benaskins/axon-talk/openai"
 	"github.com/benaskins/luthier/internal/analysis"
 )
 
@@ -127,12 +128,18 @@ type PlanDetail struct {
 	CountRange [2]int `json:"count_range"`
 }
 
+type BoundarySummary struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Type string `json:"type"`
+}
+
 type SpecSummary struct {
-	Name       string   `json:"name"`
-	Modules    []string `json:"modules"`
-	Boundaries int      `json:"boundaries"`
-	Gaps       int      `json:"gaps"`
-	PlanSteps  int      `json:"plan_steps"`
+	Name       string            `json:"name"`
+	Modules    []string          `json:"modules"`
+	Boundaries []BoundarySummary `json:"boundaries"`
+	Gaps       int               `json:"gaps"`
+	PlanSteps  int               `json:"plan_steps"`
 }
 
 func evaluate(specs []*analysis.ScaffoldSpec) Report {
@@ -294,6 +301,13 @@ func newClient(provider string) talk.LLMClient {
 	}
 
 	switch provider {
+	case "local":
+		localURL := os.Getenv("LUTHIER_LOCAL_URL")
+		if localURL == "" {
+			localURL = "http://localhost:8090"
+		}
+		return openai.NewClient(localURL, "")
+
 	case "cloudflare":
 		token := os.Getenv("CLOUDFLARE_AXON_GATE_TOKEN")
 		cfGateway := os.Getenv("CLOUDFLARE_GATEWAY")

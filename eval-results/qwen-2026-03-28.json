@@ -1,0 +1,7 @@
+luthier-eval: running 5 analyses against fixtures/coding-agent-prd.md (provider: cloudflare, model: @cf/qwen/qwen2.5-coder-32b-instruct)
+  run 1/5… FAILED: analysis: chat: cloudflare: status 401: {"result":null,"success":false,"errors":[{"code":10000,"message":"Authentication error"}],"messages":[]}
+  run 2/5… FAILED: analysis: chat: cloudflare: status 401: {"result":null,"success":false,"errors":[{"code":10000,"message":"Authentication error"}],"messages":[]}
+  run 3/5… FAILED: analysis: chat: cloudflare: status 401: {"result":null,"success":false,"errors":[{"code":10000,"message":"Authentication error"}],"messages":[]}
+  run 4/5… FAILED: analysis: chat: cloudflare: status 401: {"result":null,"success":false,"errors":[{"code":10000,"message":"Authentication error"}],"messages":[]}
+  run 5/5… FAILED: analysis: chat: cloudflare: status 401: {"result":null,"success":false,"errors":[{"code":10000,"message":"Authentication error"}],"messages":[]}
+luthier-eval: need at least 2 successful runs to compare, got 0

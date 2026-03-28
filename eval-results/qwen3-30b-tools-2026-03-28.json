@@ -1,0 +1,119 @@
+luthier-eval: running 5 analyses against fixtures/coding-agent-prd.md (provider: ollama, model: qwen3:30b)
+  run 1/5… ok (5 modules, 3 boundaries, 0 gaps, 4 steps)
+  run 2/5… ok (1 modules, 0 boundaries, 0 gaps, 0 steps)
+  run 3/5… ok (3 modules, 1 boundaries, 1 gaps, 2 steps)
+  run 4/5… ok (1 modules, 0 boundaries, 0 gaps, 1 steps)
+  run 5/5… ok (1 modules, 0 boundaries, 0 gaps, 3 steps)
+{
+  "runs": 5,
+  "module_score": 0.2,
+  "boundary_score": 0,
+  "gap_score": 0,
+  "plan_step_score": 0,
+  "overall_score": 0.05,
+  "module_details": {
+    "unanimous": [
+      "axon"
+    ],
+    "partial": [
+      {
+        "name": "axon-loop",
+        "count": 2,
+        "total": 5
+      },
+      {
+        "name": "axon-talk",
+        "count": 2,
+        "total": 5
+      }
+    ],
+    "unique": [
+      {
+        "name": "axon-tool",
+        "run": 1
+      },
+      {
+        "name": "axon-eval",
+        "run": 1
+      }
+    ],
+    "count_range": [
+      1,
+      5
+    ]
+  },
+  "boundary_details": {
+    "count_range": [
+      0,
+      3
+    ]
+  },
+  "gap_details": {
+    "count_range": [
+      0,
+      1
+    ],
+    "all_questions": [
+      "Is the Coding Agent intended to be a CLI tool (not an HTTP service) or an HTTP service (with a CLI interface) that serves the scaffolding functionality?"
+    ]
+  },
+  "plan_details": {
+    "count_range": [
+      0,
+      4
+    ]
+  },
+  "raw_specs": [
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-loop",
+        "axon-talk",
+        "axon-tool"
+      ],
+      "boundaries": 3,
+      "gaps": 0,
+      "plan_steps": 4
+    },
+    {
+      "name": "service",
+      "modules": [
+        "axon"
+      ],
+      "boundaries": 0,
+      "gaps": 0,
+      "plan_steps": 0
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-loop",
+        "axon-talk"
+      ],
+      "boundaries": 1,
+      "gaps": 1,
+      "plan_steps": 2
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon"
+      ],
+      "boundaries": 0,
+      "gaps": 0,
+      "plan_steps": 1
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon"
+      ],
+      "boundaries": 0,
+      "gaps": 0,
+      "plan_steps": 3
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+luthier-eval: running 5 analyses against fixtures/coding-agent-prd.md (model: claude-sonnet-4-6)
+  run 1/5… ok (8 modules, 8 boundaries, 2 gaps, 13 steps)
+  run 2/5… ok (8 modules, 9 boundaries, 2 gaps, 12 steps)
+  run 3/5… ok (8 modules, 9 boundaries, 0 gaps, 13 steps)
+  run 4/5… ok (8 modules, 8 boundaries, 3 gaps, 12 steps)
+  run 5/5… ok (8 modules, 10 boundaries, 0 gaps, 15 steps)
+{
+  "runs": 5,
+  "module_score": 1,
+  "boundary_score": 0.8,
+  "gap_score": 0,
+  "plan_step_score": 0.8,
+  "overall_score": 0.65,
+  "module_details": {
+    "unanimous": [
+      "axon",
+      "axon-eval",
+      "axon-fact",
+      "axon-loop",
+      "axon-memo",
+      "axon-talk",
+      "axon-task",
+      "axon-tool"
+    ],
+    "count_range": [
+      8,
+      8
+    ]
+  },
+  "boundary_details": {
+    "count_range": [
+      8,
+      10
+    ]
+  },
+  "gap_details": {
+    "count_range": [
+      0,
+      3
+    ],
+    "all_questions": [
+      "Should clarifying questions (gap resolution) be interactive stdin/stdout, or should the tool emit a structured questions file and re-accept answers as a second invocation? Interactive is simpler but breaks non-interactive CI use.",
+      "Should the server component be long-lived (a daemon the CLI talks to) or should it spin up and tear down per invocation? The PRD says 'must work offline except for the LLM API call', suggesting a local server, but a per-invocation in-process mode is also feasible.",
+      "What LLM provider should be used as the default? The PRD requires offline operation except for the LLM API call, which rules out cloud-only providers for some environments. Should the default be Ollama (fully local) with Anthropic as an optional override, or the reverse?",
+      "What is the target output directory convention — does the CLI write to a path specified by the developer (e.g. --output ./my-service), or does it always write to ./\u003cproject-name\u003e derived from the PRD? Affects the write_file tool sandbox and the CLI UX.",
+      "Where should generated project directories be written? e.g. current working directory, a configurable --output flag, or a fixed workspace path? This affects CLI UX and config schema.",
+      "Where should the component catalog live? The PRD says the tool must know 'which components exist, when to use each one, and how they fit together'. Should this be embedded in the binary at compile time (go:embed), read from a local file path the user configures, or fetched from a team-internal URL on first run and then cached?",
+      "Which LLM provider should be the default, and should the provider be selectable at runtime via a flag/env var? axon-talk supports Anthropic, Ollama, and Cloudflare Workers AI."
+    ]
+  },
+  "plan_details": {
+    "count_range": [
+      12,
+      15
+    ]
+  },
+  "raw_specs": [
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-memo",
+        "axon-talk",
+        "axon-task",
+        "axon-tool"
+      ],
+      "boundaries": 8,
+      "gaps": 2,
+      "plan_steps": 13
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-memo",
+        "axon-talk",
+        "axon-task",
+        "axon-tool"
+      ],
+      "boundaries": 9,
+      "gaps": 2,
+      "plan_steps": 12
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-memo",
+        "axon-talk",
+        "axon-task",
+        "axon-tool"
+      ],
+      "boundaries": 9,
+      "gaps": 0,
+      "plan_steps": 13
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-memo",
+        "axon-talk",
+        "axon-task",
+        "axon-tool"
+      ],
+      "boundaries": 8,
+      "gaps": 3,
+      "plan_steps": 12
+    },
+    {
+      "name": "coding-agent",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-memo",
+        "axon-talk",
+        "axon-task",
+        "axon-tool"
+      ],
+      "boundaries": 10,
+      "gaps": 0,
+      "plan_steps": 15
+    }
+  ]
+}
