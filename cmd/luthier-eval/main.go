@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	talk "github.com/benaskins/axon-talk"
 	"github.com/benaskins/axon-talk/anthropic"
+	cf "github.com/benaskins/axon-talk/cloudflare"
 	"github.com/benaskins/luthier/internal/analysis"
 )
 
@@ -43,13 +45,18 @@ func run() error {
 		return fmt.Errorf("read PRD: %w", err)
 	}
 
-	client := newClient()
+	provider := os.Getenv("LUTHIER_PROVIDER")
+	if provider == "" {
+		provider = "anthropic"
+	}
+
+	client := newClient(provider)
 	model := defaultModel
 	if m := os.Getenv("LUTHIER_MODEL"); m != "" {
 		model = m
 	}
 
-	fmt.Fprintf(os.Stderr, "luthier-eval: running %d analyses against %s (model: %s)\n", numRuns, prdPath, model)
+	fmt.Fprintf(os.Stderr, "luthier-eval: running %d analyses against %s (provider: %s, model: %s)\n", numRuns, prdPath, provider, model)
 
 	var specs []*analysis.ScaffoldSpec
 	for i := 0; i < numRuns; i++ {
@@ -279,26 +286,45 @@ func evaluate(specs []*analysis.ScaffoldSpec) Report {
 	}
 }
 
-func newClient() *anthropic.Client {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	baseURL := "https://api.anthropic.com"
-
+func newClient(provider string) talk.LLMClient {
 	accountID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
-	gatewayToken := os.Getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
 	gatewayName := os.Getenv("CLOUDFLARE_AI_GATEWAY_NAME")
 	if gatewayName == "" {
 		gatewayName = "axon"
 	}
 
-	var opts []anthropic.Option
-	if accountID != "" && gatewayToken != "" {
-		baseURL = fmt.Sprintf(
-			"https://gateway.ai.cloudflare.com/v1/%s/%s/anthropic",
+	switch provider {
+	case "cloudflare":
+		token := os.Getenv("CLOUDFLARE_AXON_GATE_TOKEN")
+		cfGateway := os.Getenv("CLOUDFLARE_GATEWAY")
+		if cfGateway == "" {
+			cfGateway = "axon-gate"
+		}
+		baseURL := fmt.Sprintf(
+			"https://gateway.ai.cloudflare.com/v1/%s/%s/workers-ai",
 			strings.TrimSpace(accountID),
-			gatewayName,
+			cfGateway,
 		)
-		opts = append(opts, anthropic.WithGatewayToken(gatewayToken))
-	}
+		var opts []cf.Option
+		if gwToken := os.Getenv("CLOUDFLARE_AI_GATEWAY_TOKEN"); gwToken != "" {
+			opts = append(opts, cf.WithGatewayToken(gwToken))
+		}
+		return cf.NewClient(baseURL, token, opts...)
 
-	return anthropic.NewClient(baseURL, apiKey, opts...)
+	default: // anthropic
+		apiKey := os.Getenv("ANTHROPIC_API_KEY")
+		baseURL := "https://api.anthropic.com"
+		gatewayToken := os.Getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
+
+		var opts []anthropic.Option
+		if accountID != "" && gatewayToken != "" {
+			baseURL = fmt.Sprintf(
+				"https://gateway.ai.cloudflare.com/v1/%s/%s/anthropic",
+				strings.TrimSpace(accountID),
+				gatewayName,
+			)
+			opts = append(opts, anthropic.WithGatewayToken(gatewayToken))
+		}
+		return anthropic.NewClient(baseURL, apiKey, opts...)
+	}
 }
