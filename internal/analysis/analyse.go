@@ -20,14 +20,15 @@ var scaffoldSpecSchema = map[string]any{
 		},
 		"modules": map[string]any{
 			"type":        "array",
-			"description": "Axon modules selected for this project.",
+			"description": "Axon modules selected for this project. Use exact module names from the catalog (e.g. axon-loop, axon-talk, axon-tool).",
 			"items": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"name":             map[string]any{"type": "string"},
+					"name":             map[string]any{"type": "string", "description": "Exact module name from the catalog (e.g. axon-loop)."},
 					"reason":           map[string]any{"type": "string"},
 					"is_deterministic": map[string]any{"type": "boolean"},
 				},
+				"required": []string{"name", "reason", "is_deterministic"},
 			},
 		},
 		"boundaries": map[string]any{
@@ -40,6 +41,7 @@ var scaffoldSpecSchema = map[string]any{
 					"to":   map[string]any{"type": "string"},
 					"type": map[string]any{"type": "string", "enum": []string{"det", "non-det"}},
 				},
+				"required": []string{"from", "to", "type"},
 			},
 		},
 		"plan_steps": map[string]any{
@@ -52,6 +54,7 @@ var scaffoldSpecSchema = map[string]any{
 					"description":    map[string]any{"type": "string"},
 					"commit_message": map[string]any{"type": "string"},
 				},
+				"required": []string{"title", "description", "commit_message"},
 			},
 		},
 		"gaps": map[string]any{
@@ -63,6 +66,7 @@ var scaffoldSpecSchema = map[string]any{
 					"question": map[string]any{"type": "string"},
 					"context":  map[string]any{"type": "string"},
 				},
+				"required": []string{"question", "context"},
 			},
 		},
 	},
