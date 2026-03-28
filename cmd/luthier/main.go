@@ -76,10 +76,7 @@ func run() error {
 
 func composeFromSpec(spec *analysis.ScaffoldSpec) *writer.ComposedOutput {
 	reg := snippets.NewRegistry()
-	for _, s := range snippets.CoreSnippets() {
-		reg.Register(s)
-	}
-	for _, s := range snippets.CapabilitySnippets() {
+	for _, s := range snippets.GeneratedSnippets() {
 		reg.Register(s)
 	}
 

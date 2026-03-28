@@ -18,21 +18,21 @@ non-deterministic in the ModuleSelection.is_deterministic field.
 | Module | Purpose | Use when |
 |--------|---------|----------|
 | axon | HTTP server lifecycle, config, auth, SSE, metrics | Any HTTP service |
-| axon-loop | Provider-agnostic conversation loop for LLM agents | LLM conversation needed |
-| axon-talk | LLM provider adapters (Anthropic, Ollama, Cloudflare Workers AI) | Depends on axon-loop |
-| axon-tool | Tool definitions and execution for LLM agents | Agent tool use |
 | axon-auth | WebAuthn/passkey authentication | Auth needed |
-| axon-fact | Event sourcing primitives — Event, EventStore, Projector, Publisher | Audit trail, replay, training corpus |
-| axon-memo | Long-term memory extraction and consolidation | Cross-session memory |
-| axon-task | Generic async task runner with pluggable workers | Async/background work |
-| axon-nats | NATS adapters for cross-instance fan-out | Horizontal scaling, pub/sub |
-| axon-lens | Image generation pipeline (FLUX.1 via MLX) | Image generation |
-| axon-mind | Embedded Prolog engine for structured inference | Logic/rules engine |
-| axon-wire | HTTP transport routing through Cloudflare Worker proxy | Outbound HTTP via proxy |
-| axon-synd | Personal syndication engine | Blog/social publishing |
-| axon-gate | Deploy approval gate with Signal notifications | Deploy gating |
-| axon-look | Analytics event ingestion and querying (ClickHouse) | Analytics/observability |
 | axon-eval | Evaluation framework for scenario plans | LLM output evaluation |
+| axon-fact | Event sourcing primitives — Event, EventStore, Projector, Publisher | Audit trail, replay, training corpus |
+| axon-gate | Deploy approval gate with Signal notifications | Deploy gating |
+| axon-lens | Image generation pipeline (FLUX.1 via MLX) | Image generation |
+| axon-look | Analytics event ingestion and querying (ClickHouse) | Analytics/observability |
+| axon-loop | Provider-agnostic conversation loop for LLM agents | LLM conversation needed |
+| axon-memo | Long-term memory extraction and consolidation | Cross-session memory |
+| axon-mind | Embedded Prolog engine for structured inference | Logic/rules engine |
+| axon-nats | NATS adapters for cross-instance fan-out | Horizontal scaling, pub/sub |
+| axon-synd | Personal syndication engine | Blog/social publishing |
+| axon-talk | LLM provider adapters (Anthropic, Ollama, Cloudflare Workers AI) | Depends on axon-loop |
+| axon-task | Generic async task runner with pluggable workers | Async/background work |
+| axon-tool | Tool definitions and execution for LLM agents | Agent tool use |
+| axon-wire | HTTP transport routing through Cloudflare Worker proxy | Outbound HTTP via proxy |
 
 ## Established Patterns
 

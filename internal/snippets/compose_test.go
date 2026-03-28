@@ -151,9 +151,9 @@ func TestComposeImportGrouping(t *testing.T) {
 }
 
 func TestComposeWithCoreSnippets(t *testing.T) {
-	// Integration test: compose using real core snippets
+	// Integration test: compose using generated snippets
 	r := NewRegistry()
-	for _, s := range CoreSnippets() {
+	for _, s := range GeneratedSnippets() {
 		r.Register(s)
 	}
 
