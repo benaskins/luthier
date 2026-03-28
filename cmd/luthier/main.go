@@ -11,6 +11,7 @@ import (
 	"github.com/benaskins/axon-talk/anthropic"
 	"github.com/benaskins/luthier/internal/analysis"
 	"github.com/benaskins/luthier/internal/gaps"
+	"github.com/benaskins/luthier/internal/snippets"
 	"github.com/benaskins/luthier/internal/writer"
 )
 
@@ -55,9 +56,12 @@ func run() error {
 		}
 	}
 
+	// Compose glue code from snippets
+	composed := composeFromSpec(spec)
+
 	outDir := filepath.Join(".", spec.Name)
 	fmt.Fprintf(os.Stderr, "luthier: writing scaffold to %s/\n", outDir)
-	if err := writer.Write(spec, outDir); err != nil {
+	if err := writer.Write(spec, outDir, composed); err != nil {
 		return fmt.Errorf("write: %w", err)
 	}
 
@@ -68,6 +72,56 @@ func run() error {
 
 	fmt.Println(outDir)
 	return nil
+}
+
+func composeFromSpec(spec *analysis.ScaffoldSpec) *writer.ComposedOutput {
+	reg := snippets.NewRegistry()
+	for _, s := range snippets.CoreSnippets() {
+		reg.Register(s)
+	}
+	for _, s := range snippets.CapabilitySnippets() {
+		reg.Register(s)
+	}
+
+	var moduleNames []string
+	for _, m := range spec.Modules {
+		if _, ok := reg.Get(m.Name); ok {
+			moduleNames = append(moduleNames, m.Name)
+		}
+	}
+
+	if len(moduleNames) == 0 {
+		return nil
+	}
+
+	selected, err := reg.ForModules(moduleNames)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "luthier: snippet warning: %v\n", err)
+		return nil
+	}
+
+	mainSrc, err := snippets.Compose(spec.Name, selected)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "luthier: compose warning: %v\n", err)
+		return nil
+	}
+
+	// Collect deduplicated requires
+	seen := map[string]bool{}
+	var requires []string
+	for _, s := range selected {
+		for _, r := range s.Requires {
+			if !seen[r] {
+				seen[r] = true
+				requires = append(requires, r)
+			}
+		}
+	}
+
+	return &writer.ComposedOutput{
+		MainGo:   mainSrc,
+		Requires: requires,
+	}
 }
 
 func verifyBuild(dir string) error {

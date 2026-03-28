@@ -38,7 +38,7 @@ func testSpec() *analysis.ScaffoldSpec {
 func TestWrite_CreatesExpectedFiles(t *testing.T) {
 	outDir := t.TempDir()
 
-	if err := Write(testSpec(), outDir); err != nil {
+	if err := Write(testSpec(), outDir, nil); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 
@@ -69,7 +69,7 @@ func TestWrite_CreatesExpectedFiles(t *testing.T) {
 
 func TestWrite_AgentsMdContainsModules(t *testing.T) {
 	outDir := t.TempDir()
-	if err := Write(testSpec(), outDir); err != nil {
+	if err := Write(testSpec(), outDir, nil); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 
@@ -95,7 +95,7 @@ func TestWrite_AgentsMdContainsModules(t *testing.T) {
 
 func TestWrite_PlanContainsSteps(t *testing.T) {
 	outDir := t.TempDir()
-	if err := Write(testSpec(), outDir); err != nil {
+	if err := Write(testSpec(), outDir, nil); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 
@@ -119,7 +119,7 @@ func TestWrite_PlanContainsSteps(t *testing.T) {
 
 func TestWrite_GoModContainsModuleName(t *testing.T) {
 	outDir := t.TempDir()
-	if err := Write(testSpec(), outDir); err != nil {
+	if err := Write(testSpec(), outDir, nil); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 
