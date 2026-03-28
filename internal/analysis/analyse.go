@@ -3,6 +3,7 @@ package analysis
 import (
 	"context"
 	"fmt"
+	"os"
 
 	loop "github.com/benaskins/axon-loop"
 	talk "github.com/benaskins/axon-talk"
@@ -15,6 +16,7 @@ import (
 // The loop exits when the model stops calling tools after finalize.
 func Analyse(ctx context.Context, prd string, client talk.LLMClient, model string) (*ScaffoldSpec, error) {
 	builder := NewSpecBuilder()
+	verbose := os.Getenv("LUTHIER_DEBUG") != ""
 
 	req := talk.NewRequest(
 		model,
@@ -39,16 +41,54 @@ PRD:
 	)
 	req.MaxIterations = 50
 
-	_, err := loop.Run(ctx, loop.RunConfig{
-		Client: client,
+	cfg := loop.RunConfig{
+		Client:  client,
 		Request: req,
-		Tools:  builder.Tools(),
-	})
+		Tools:   builder.Tools(),
+	}
+
+	if verbose {
+		cfg.Callbacks = loop.Callbacks{
+			OnToolUse: func(name string, args map[string]any) {
+				switch name {
+				case "select_module":
+					fmt.Fprintf(os.Stderr, "  tool: select_module(%s)\n", args["name"])
+				case "define_boundary":
+					fmt.Fprintf(os.Stderr, "  tool: define_boundary(%s → %s, %s)\n", args["from"], args["to"], args["type"])
+				case "add_plan_step":
+					fmt.Fprintf(os.Stderr, "  tool: add_plan_step(%s)\n", args["title"])
+				case "raise_gap":
+					fmt.Fprintf(os.Stderr, "  tool: raise_gap(%s)\n", args["question"])
+				case "finalize":
+					fmt.Fprintf(os.Stderr, "  tool: finalize(%s)\n", args["name"])
+				default:
+					fmt.Fprintf(os.Stderr, "  tool: %s(...)\n", name)
+				}
+			},
+			OnDone: func(durationMs int64) {
+				spec := builder.Spec()
+				fmt.Fprintf(os.Stderr, "  done: %dms, %d modules, %d boundaries, %d steps, %d gaps, finalized=%v\n",
+					durationMs, len(spec.Modules), len(spec.Boundaries), len(spec.PlanSteps), len(spec.Gaps), builder.Finalized())
+			},
+		}
+	}
+
+	_, err := loop.Run(ctx, cfg)
 	if err != nil {
+		if verbose {
+			spec := builder.Spec()
+			fmt.Fprintf(os.Stderr, "  error state: %d modules, %d boundaries, %d steps, %d gaps, finalized=%v\n",
+				len(spec.Modules), len(spec.Boundaries), len(spec.PlanSteps), len(spec.Gaps), builder.Finalized())
+		}
 		return nil, fmt.Errorf("analysis: %w", err)
 	}
 
 	if !builder.Finalized() {
+		if verbose {
+			spec := builder.Spec()
+			fmt.Fprintf(os.Stderr, "  no finalize: %d modules, %d boundaries, %d steps, %d gaps\n",
+				len(spec.Modules), len(spec.Boundaries), len(spec.PlanSteps), len(spec.Gaps))
+		}
 		return nil, fmt.Errorf("analysis: model did not call finalize")
 	}
 
