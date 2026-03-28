@@ -20,9 +20,24 @@ func Analyse(ctx context.Context, prd string, client talk.LLMClient, model strin
 		model,
 		[]talk.Message{
 			{Role: talk.RoleSystem, Content: patterns.SystemPrompt},
-			{Role: talk.RoleUser, Content: "Analyse this PRD and produce a scaffold spec.\n\nUse the tools to build the spec incrementally: select_module for each module, define_boundary for each boundary, add_plan_step for each implementation step, raise_gap for any ambiguities, then finalize when done.\n\n" + prd},
+			{Role: talk.RoleUser, Content: `Analyse this PRD and produce a scaffold spec by calling the provided tools.
+
+You MUST call tools in this order:
+1. Call select_module once for each axon module the project needs
+2. Call define_boundary for each interface between components
+3. Call add_plan_step for each commit-sized implementation step
+4. Call raise_gap ONLY for genuine ambiguities you cannot resolve from the catalog
+5. Call finalize with the project name when you are done
+
+Do NOT respond with text between tool calls. Call multiple tools per turn when possible.
+You MUST call finalize when your analysis is complete.
+
+PRD:
+
+` + prd},
 		},
 	)
+	req.MaxIterations = 50
 
 	_, err := loop.Run(ctx, loop.RunConfig{
 		Client: client,

@@ -257,10 +257,14 @@ func evaluate(specs []*analysis.ScaffoldSpec) Report {
 			mods = append(mods, m.Name)
 		}
 		sort.Strings(mods)
+		var bounds []BoundarySummary
+		for _, b := range spec.Boundaries {
+			bounds = append(bounds, BoundarySummary{From: b.From, To: b.To, Type: b.Type})
+		}
 		raw = append(raw, SpecSummary{
 			Name:       spec.Name,
 			Modules:    mods,
-			Boundaries: len(spec.Boundaries),
+			Boundaries: bounds,
 			Gaps:       len(spec.Gaps),
 			PlanSteps:  len(spec.PlanSteps),
 		})
