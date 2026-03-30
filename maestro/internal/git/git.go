@@ -19,7 +19,7 @@ func Commit(projectDir string, message string) error {
 		return fmt.Errorf("git diff: %w", err)
 	}
 	if strings.TrimSpace(out) == "" {
-		return fmt.Errorf("no changes to commit")
+		return nil // no changes needed — step already implemented
 	}
 
 	if err := run(projectDir, "git", "commit", "-m", message); err != nil {
