@@ -55,9 +55,12 @@ func run() error {
 	}
 
 	// Determine system prompt: from catalogue file or built-in default
-	var systemPrompt string
+	var (
+		systemPrompt string
+		cat          *catalogue.Catalogue
+	)
 	if *cataloguePath != "" {
-		cat, err := catalogue.Load(*cataloguePath)
+		cat, err = catalogue.Load(*cataloguePath)
 		if err != nil {
 			return fmt.Errorf("load catalogue: %w", err)
 		}
@@ -92,7 +95,12 @@ func run() error {
 
 	outDir := filepath.Join(".", spec.Name)
 	fmt.Fprintf(os.Stderr, "luthier: writing scaffold to %s/\n", outDir)
-	if err := writer.Write(spec, outDir, composed); err != nil {
+	opts := &writer.Options{
+		Composed:      composed,
+		Catalogue:     cat,
+		CataloguePath: *cataloguePath,
+	}
+	if err := writer.Write(spec, outDir, opts); err != nil {
 		return fmt.Errorf("write: %w", err)
 	}
 

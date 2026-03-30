@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/benaskins/luthier/internal/analysis"
+	"github.com/benaskins/luthier/internal/catalogue"
 )
 
 //go:embed templates
@@ -25,6 +26,7 @@ type templateData struct {
 	PlanSteps   []analysis.PlanStep
 	Requires    []string // go.mod require paths from snippets
 	Date        string
+	Catalogue   *catalogue.Catalogue // nil when no catalogue was used
 }
 
 // ComposedOutput holds the pre-composed source files from snippet composition.
@@ -33,10 +35,21 @@ type ComposedOutput struct {
 	Requires []string // deduplicated go.mod require paths
 }
 
+// Options holds optional configuration for Write.
+type Options struct {
+	Composed      *ComposedOutput
+	Catalogue     *catalogue.Catalogue
+	CataloguePath string // original YAML path; copied into scaffold as catalogue.yaml
+}
+
 // Write creates outDir and writes the scaffold files derived from spec.
-// If composed is non-nil, main.go uses the composed source and go.mod
+// If opts.Composed is non-nil, main.go uses the composed source and go.mod
 // includes the require lines. Otherwise falls back to the stub template.
-func Write(spec *analysis.ScaffoldSpec, outDir string, composed *ComposedOutput) error {
+func Write(spec *analysis.ScaffoldSpec, outDir string, opts *Options) error {
+	if opts == nil {
+		opts = &Options{}
+	}
+	composed := opts.Composed
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("writer: create output dir: %w", err)
 	}
@@ -70,6 +83,7 @@ func Write(spec *analysis.ScaffoldSpec, outDir string, composed *ComposedOutput)
 		PlanSteps:   spec.PlanSteps,
 		Requires:    requires,
 		Date:        time.Now().Format("2006-01-02"),
+		Catalogue:   opts.Catalogue,
 	}
 
 	files := []struct {
@@ -105,6 +119,18 @@ func Write(spec *analysis.ScaffoldSpec, outDir string, composed *ComposedOutput)
 			return err
 		}
 	}
+
+	// Copy catalogue YAML into the scaffold so downstream tools (maestro, inspector) can read it.
+	if opts.CataloguePath != "" {
+		src, err := os.ReadFile(opts.CataloguePath)
+		if err != nil {
+			return fmt.Errorf("writer: read catalogue: %w", err)
+		}
+		if err := os.WriteFile(filepath.Join(outDir, "catalogue.yaml"), src, 0o644); err != nil {
+			return fmt.Errorf("writer: write catalogue.yaml: %w", err)
+		}
+	}
+
 	return nil
 }
 

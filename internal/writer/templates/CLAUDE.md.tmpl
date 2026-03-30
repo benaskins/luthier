@@ -9,10 +9,43 @@
 ```bash
 just build     # builds to bin/{{.Name}}
 just install   # installs to ~/.local/bin/{{.Name}}
-just test      # go test ./...
-just vet       # go vet ./...
+just test      # run tests
+just vet       # lint
 ```
 
 ## Plan
 
-See `plans/` for commit-sized implementation steps. Use `/iterate` to execute them.
+See `plans/` for commit-sized implementation steps.
+{{if .Catalogue}}
+## Framework: {{.Catalogue.Name}} ({{.Catalogue.Language}} {{.Catalogue.Version}})
+
+### Components in Use
+
+{{range .Modules}}- **{{.Name}}**: {{.Reason}}
+{{end}}
+### Patterns
+
+{{range .Catalogue.Patterns}}- **{{.Requirement}}**: {{.Pattern}}
+{{end}}
+### File Conventions
+
+{{range .Catalogue.FileConvs}}- `{{.Path}}`: {{.Description}}
+{{end}}
+### Boundary Notes
+
+{{.Catalogue.BoundaryN}}
+{{end}}
+## Practice
+
+Execute the plan one step at a time. Each step is a TDD cycle that ends with a clean commit.
+
+1. Read the plan. Pick up the next incomplete step.
+2. Write a failing test first, then make it pass, then clean up. Run the full test suite before committing.
+3. Review your change for reuse, quality, and efficiency before committing.
+4. Run `git status`. Only stage files related to this step.
+5. One commit per plan step. Use conventional commit messages (feat/fix/refactor/test/infra/config prefix).
+6. Move to the next step.
+
+Stop if:
+- A step reveals a design question the plan did not anticipate
+- Tests are failing for reasons unrelated to the current step

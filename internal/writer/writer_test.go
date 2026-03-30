@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/benaskins/luthier/internal/analysis"
+	"github.com/benaskins/luthier/internal/catalogue"
 )
 
 func testSpec() *analysis.ScaffoldSpec {
@@ -131,5 +132,103 @@ func TestWrite_GoModContainsModuleName(t *testing.T) {
 
 	if !strings.Contains(content, "github.com/benaskins/my-service") {
 		t.Errorf("go.mod missing module path, got:\n%s", content)
+	}
+}
+
+func testCatalogue() *catalogue.Catalogue {
+	return &catalogue.Catalogue{
+		Name:     "Ruby on Rails",
+		Language: "ruby",
+		Version:  "8.0",
+		Components: []catalogue.Component{
+			{Name: "rails", Class: "platform", Purpose: "Full-stack web framework"},
+			{Name: "devise", Class: "domain", Purpose: "Authentication"},
+		},
+		Patterns: []catalogue.Pattern{
+			{Requirement: "Authentication", Pattern: "devise with default modules"},
+		},
+		FileConvs: []catalogue.FileConv{
+			{Path: "app/models/", Description: "ActiveRecord models"},
+		},
+		BoundaryN: "Most boundaries are deterministic in Rails.",
+	}
+}
+
+func TestWrite_WithCatalogue_CLAUDEMdContainsCatalogueContent(t *testing.T) {
+	outDir := t.TempDir()
+	opts := &Options{Catalogue: testCatalogue()}
+	if err := Write(testSpec(), outDir, opts); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(outDir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("ReadFile CLAUDE.md: %v", err)
+	}
+	content := string(data)
+
+	checks := []struct {
+		desc string
+		want string
+	}{
+		{"framework name", "Ruby on Rails"},
+		{"component", "devise"},
+		{"pattern", "devise with default modules"},
+		{"file convention", "app/models/"},
+		{"boundary notes", "Most boundaries are deterministic"},
+		{"practice section", "## Practice"},
+		{"TDD instruction", "Write a failing test first"},
+	}
+	for _, c := range checks {
+		if !strings.Contains(content, c.want) {
+			t.Errorf("CLAUDE.md missing %s (%q)", c.desc, c.want)
+		}
+	}
+}
+
+func TestWrite_WithCatalogue_CopiesCatalogueYAML(t *testing.T) {
+	outDir := t.TempDir()
+
+	// Write a temp catalogue file to copy
+	catPath := filepath.Join(t.TempDir(), "test-catalogue.yaml")
+	if err := os.WriteFile(catPath, []byte("name: test\n"), 0o644); err != nil {
+		t.Fatalf("write test catalogue: %v", err)
+	}
+
+	opts := &Options{
+		Catalogue:     testCatalogue(),
+		CataloguePath: catPath,
+	}
+	if err := Write(testSpec(), outDir, opts); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(outDir, "catalogue.yaml"))
+	if err != nil {
+		t.Fatalf("catalogue.yaml not written: %v", err)
+	}
+	if !strings.Contains(string(data), "name: test") {
+		t.Error("catalogue.yaml content mismatch")
+	}
+}
+
+func TestWrite_WithoutCatalogue_NoCatalogueSection(t *testing.T) {
+	outDir := t.TempDir()
+	if err := Write(testSpec(), outDir, nil); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(outDir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("ReadFile CLAUDE.md: %v", err)
+	}
+	content := string(data)
+
+	if strings.Contains(content, "## Framework") {
+		t.Error("CLAUDE.md should not contain Framework section without catalogue")
+	}
+	// Practice section should still be present
+	if !strings.Contains(content, "## Practice") {
+		t.Error("CLAUDE.md should contain Practice section even without catalogue")
 	}
 }
