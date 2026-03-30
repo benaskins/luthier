@@ -1,0 +1,17 @@
+one:
+  url: https://example.com
+  title: Example Site
+  description: An example bookmark
+  user: one
+
+two:
+  url: https://rails.org
+  title: Ruby on Rails
+  description: Web framework
+  user: one
+
+other_user_bookmark:
+  url: https://other.com
+  title: Other User Bookmark
+  description: Belongs to user two
+  user: two
