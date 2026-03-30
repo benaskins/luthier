@@ -3,9 +3,11 @@ package orchestrate
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
+	fact "github.com/benaskins/axon-fact"
 	"github.com/benaskins/maestro/internal/agent"
 	gitpkg "github.com/benaskins/maestro/internal/git"
 	"github.com/benaskins/maestro/internal/plan"
@@ -31,6 +33,11 @@ type Config struct {
 	// VerifyCmd overrides automatic verification command detection.
 	// Useful in tests and when the caller already knows the command.
 	VerifyCmd string
+	// EventStore records orchestration activities. If nil, events are dropped.
+	EventStore fact.EventStore
+	// EventStream is the stream name for the event store.
+	// Defaults to "orchestration" if empty.
+	EventStream string
 }
 
 // Result summarises a completed orchestration run.
@@ -63,6 +70,10 @@ func Run(cfg Config) (*Result, error) {
 
 	if cfg.MaxRetries == 0 {
 		cfg.MaxRetries = 3
+	}
+
+	if cfg.EventStream == "" {
+		cfg.EventStream = "orchestration"
 	}
 
 	if cfg.ResumeFrom != "" {
@@ -124,31 +135,70 @@ func Run(cfg Config) (*Result, error) {
 }
 
 func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
+	ctx := context.Background()
+	stream := cfg.EventStream
+
+	emit(ctx, cfg.EventStore, stream, EventStepStarted, StepStartedData{
+		StepNumber: step.Number,
+		StepTitle:  step.Title,
+	})
+
 	var feedback string
 
 	for attempt := 1; attempt <= cfg.MaxRetries; attempt++ {
 		if attempt > 1 {
 			fmt.Fprintf(os.Stderr, "    retry %d/%d\n", attempt, cfg.MaxRetries)
+			emit(ctx, cfg.EventStore, stream, EventRetryAttempt, RetryAttemptData{
+				StepNumber: step.Number,
+				Attempt:    attempt,
+			})
 		}
 
 		// Delegate to coding agent
 		fmt.Fprintf(os.Stderr, "    delegating to coding agent...\n")
+		emit(ctx, cfg.EventStore, stream, EventAgentInvoked, AgentInvokedData{
+			StepNumber:  step.Number,
+			Attempt:     attempt,
+			HasFeedback: feedback != "",
+		})
 		agentOut, err := cfg.Agent.Implement(cfg.ProjectDir, step, feedback)
 		if err != nil {
 			feedback = fmt.Sprintf("Agent error: %s\nOutput: %s", err, agentOut)
 			fmt.Fprintf(os.Stderr, "    agent failed: %v\n", err)
+			emit(ctx, cfg.EventStore, stream, EventAgentFailed, AgentFailedData{
+				StepNumber: step.Number,
+				Attempt:    attempt,
+				Error:      err.Error(),
+			})
 			continue
 		}
+		emit(ctx, cfg.EventStore, stream, EventAgentSucceeded, AgentSucceededData{
+			StepNumber: step.Number,
+			Attempt:    attempt,
+		})
 
 		// Run verification
 		fmt.Fprintf(os.Stderr, "    verifying: %s\n", verifyCmd)
+		emit(ctx, cfg.EventStore, stream, EventVerificationRun, VerificationRunData{
+			StepNumber: step.Number,
+			Attempt:    attempt,
+			Command:    verifyCmd,
+		})
 		verifyOut, err := verify.Run(cfg.ProjectDir, verifyCmd)
 		if err != nil {
 			feedback = fmt.Sprintf("Verification failed:\n%s", verifyOut)
 			fmt.Fprintf(os.Stderr, "    verification failed\n")
+			emit(ctx, cfg.EventStore, stream, EventVerificationFailed, VerificationFailedData{
+				StepNumber: step.Number,
+				Attempt:    attempt,
+			})
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "    verification passed\n")
+		emit(ctx, cfg.EventStore, stream, EventVerificationPassed, VerificationPassedData{
+			StepNumber: step.Number,
+			Attempt:    attempt,
+		})
 
 		// Run semantic review if a reviewer is configured
 		if cfg.Reviewer != nil {
@@ -159,16 +209,35 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 				continue
 			}
 
-			reviewResult, reviewErr := cfg.Reviewer.Review(context.Background(), diff, step)
+			emit(ctx, cfg.EventStore, stream, EventReviewRun, ReviewRunData{
+				StepNumber: step.Number,
+				Attempt:    attempt,
+			})
+			reviewResult, reviewErr := cfg.Reviewer.Review(ctx, diff, step)
 			if reviewErr != nil {
 				// Review errors are non-fatal: log and proceed to commit.
 				fmt.Fprintf(os.Stderr, "    review error (skipping): %v\n", reviewErr)
+				emit(ctx, cfg.EventStore, stream, EventReviewErrored, ReviewErroredData{
+					StepNumber: step.Number,
+					Attempt:    attempt,
+					Error:      reviewErr.Error(),
+				})
 			} else if !reviewResult.Passed {
 				feedback = fmt.Sprintf("Semantic review failed: %s", reviewResult.Reason)
 				fmt.Fprintf(os.Stderr, "    review failed: %s\n", reviewResult.Reason)
+				emit(ctx, cfg.EventStore, stream, EventReviewFailed, ReviewFailedData{
+					StepNumber: step.Number,
+					Attempt:    attempt,
+					Reason:     reviewResult.Reason,
+				})
 				continue
 			} else {
 				fmt.Fprintf(os.Stderr, "    review passed: %s\n", reviewResult.Reason)
+				emit(ctx, cfg.EventStore, stream, EventReviewPassed, ReviewPassedData{
+					StepNumber: step.Number,
+					Attempt:    attempt,
+					Reason:     reviewResult.Reason,
+				})
 			}
 		}
 
@@ -176,14 +245,61 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 		if err := gitpkg.Commit(cfg.ProjectDir, step.Commit); err != nil {
 			if err == gitpkg.ErrNoChanges {
 				fmt.Fprintf(os.Stderr, "    nothing to commit for: %s\n", step.Commit)
+				emit(ctx, cfg.EventStore, stream, EventCommitSkipped, CommitSkippedData{
+					StepNumber: step.Number,
+					Message:    step.Commit,
+				})
 			} else {
+				emit(ctx, cfg.EventStore, stream, EventCommitFailed, CommitFailedData{
+					StepNumber: step.Number,
+					Message:    step.Commit,
+					Error:      err.Error(),
+				})
+				emit(ctx, cfg.EventStore, stream, EventStepFailed, StepFailedData{
+					StepNumber: step.Number,
+					StepTitle:  step.Title,
+					Attempts:   attempt,
+					LastError:  err.Error(),
+				})
 				return fmt.Errorf("commit: %w", err)
 			}
 		} else {
 			fmt.Fprintf(os.Stderr, "    committed: %s\n", step.Commit)
+			emit(ctx, cfg.EventStore, stream, EventCommitSucceeded, CommitSucceededData{
+				StepNumber: step.Number,
+				Message:    step.Commit,
+			})
 		}
+
+		emit(ctx, cfg.EventStore, stream, EventStepCompleted, StepCompletedData{
+			StepNumber: step.Number,
+			StepTitle:  step.Title,
+		})
 		return nil
 	}
 
-	return fmt.Errorf("failed after %d attempts. Last error: %s", cfg.MaxRetries, feedback)
+	lastErr := fmt.Sprintf("failed after %d attempts. Last error: %s", cfg.MaxRetries, feedback)
+	emit(ctx, cfg.EventStore, stream, EventStepFailed, StepFailedData{
+		StepNumber: step.Number,
+		StepTitle:  step.Title,
+		Attempts:   cfg.MaxRetries,
+		LastError:  feedback,
+	})
+	return fmt.Errorf("%s", lastErr)
+}
+
+// emit appends a single event to the store. Errors are silently dropped so
+// that audit trail failures never abort orchestration.
+func emit(ctx context.Context, store fact.EventStore, stream, eventType string, data any) {
+	if store == nil {
+		return
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	_ = store.Append(ctx, stream, []fact.Event{{
+		Type: eventType,
+		Data: json.RawMessage(b),
+	}})
 }
