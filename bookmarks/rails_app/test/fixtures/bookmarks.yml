@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  url: https://example.com
+  title: Example Site
+  description: A sample bookmark
+  user: one
+
+two:
+  url: https://rails.org
+  title: Ruby on Rails
+  description: The Rails framework website
+  user: two

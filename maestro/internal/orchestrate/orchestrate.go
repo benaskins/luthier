@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	fact "github.com/benaskins/axon-fact"
 	"github.com/benaskins/maestro/internal/agent"
@@ -40,6 +41,15 @@ type Config struct {
 	EventStream string
 }
 
+// StepResult records what happened during a single step's execution.
+type StepResult struct {
+	Number   int
+	Title    string
+	Status   StepStatus
+	Attempts int
+	Duration time.Duration
+}
+
 // Result summarises a completed orchestration run.
 type Result struct {
 	Total     int
@@ -47,6 +57,8 @@ type Result struct {
 	Skipped   int
 	Failed    int
 	FailedAt  *plan.Step
+	Steps     []StepResult
+	Duration  time.Duration
 }
 
 // Run executes the plan steps in order.
@@ -91,6 +103,7 @@ func Run(cfg Config) (*Result, error) {
 
 	result := &Result{Total: len(steps)}
 	resuming := cfg.ResumeFrom != ""
+	runStart := time.Now()
 
 	for i := range steps {
 		step := &steps[i]
@@ -98,6 +111,11 @@ func Run(cfg Config) (*Result, error) {
 		// Skip already-committed steps
 		if gitpkg.IsStepCommitted(cfg.ProjectDir, step.Commit) {
 			result.Skipped++
+			result.Steps = append(result.Steps, StepResult{
+				Number: step.Number,
+				Title:  step.Title,
+				Status: StatusSkipped,
+			})
 			fmt.Fprintf(os.Stderr, "  [%d/%d] %s (already committed, skipping)\n", step.Number, result.Total, step.Title)
 			continue
 		}
@@ -106,6 +124,11 @@ func Run(cfg Config) (*Result, error) {
 		if resuming {
 			if step.Title != cfg.ResumeFrom && fmt.Sprintf("%d", step.Number) != cfg.ResumeFrom {
 				result.Skipped++
+				result.Steps = append(result.Steps, StepResult{
+					Number: step.Number,
+					Title:  step.Title,
+					Status: StatusSkipped,
+				})
 				fmt.Fprintf(os.Stderr, "  [%d/%d] %s (skipping, resuming from %s)\n", step.Number, result.Total, step.Title, cfg.ResumeFrom)
 				continue
 			}
@@ -119,22 +142,48 @@ func Run(cfg Config) (*Result, error) {
 			fmt.Fprintf(os.Stderr, "    dry-run: would run: %s\n", verifyCmd)
 			fmt.Fprintf(os.Stderr, "    dry-run: would commit: %s\n", step.Commit)
 			result.Completed++
+			result.Steps = append(result.Steps, StepResult{
+				Number:   step.Number,
+				Title:    step.Title,
+				Status:   StatusCompleted,
+				Attempts: 1,
+			})
 			continue
 		}
 
-		if err := executeStep(cfg, *step, verifyCmd); err != nil {
+		stepStart := time.Now()
+		attempts, err := executeStep(cfg, *step, verifyCmd)
+		stepDur := time.Since(stepStart)
+
+		if err != nil {
 			result.Failed++
 			result.FailedAt = step
+			result.Steps = append(result.Steps, StepResult{
+				Number:   step.Number,
+				Title:    step.Title,
+				Status:   StatusFailed,
+				Attempts: attempts,
+				Duration: stepDur,
+			})
+			result.Duration = time.Since(runStart)
 			return result, fmt.Errorf("step %d (%s): %w", step.Number, step.Title, err)
 		}
 
 		result.Completed++
+		result.Steps = append(result.Steps, StepResult{
+			Number:   step.Number,
+			Title:    step.Title,
+			Status:   StatusCompleted,
+			Attempts: attempts,
+			Duration: stepDur,
+		})
 	}
 
+	result.Duration = time.Since(runStart)
 	return result, nil
 }
 
-func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
+func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 	ctx := context.Background()
 	stream := cfg.EventStream
 
@@ -261,7 +310,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 					Attempts:   attempt,
 					LastError:  err.Error(),
 				})
-				return fmt.Errorf("commit: %w", err)
+				return attempt, fmt.Errorf("commit: %w", err)
 			}
 		} else {
 			fmt.Fprintf(os.Stderr, "    committed: %s\n", step.Commit)
@@ -275,7 +324,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 			StepNumber: step.Number,
 			StepTitle:  step.Title,
 		})
-		return nil
+		return attempt, nil
 	}
 
 	lastErr := fmt.Sprintf("failed after %d attempts. Last error: %s", cfg.MaxRetries, feedback)
@@ -285,7 +334,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 		Attempts:   cfg.MaxRetries,
 		LastError:  feedback,
 	})
-	return fmt.Errorf("%s", lastErr)
+	return cfg.MaxRetries, fmt.Errorf("%s", lastErr)
 }
 
 // emit appends a single event to the store. Errors are silently dropped so

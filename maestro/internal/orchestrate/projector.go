@@ -17,6 +17,7 @@ const (
 	StatusRunning   StepStatus = "running"
 	StatusCompleted StepStatus = "completed"
 	StatusFailed    StepStatus = "failed"
+	StatusSkipped   StepStatus = "skipped"
 )
 
 // StepState is the projected state for a single plan step.

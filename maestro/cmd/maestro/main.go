@@ -6,15 +6,17 @@ import (
 
 	"github.com/benaskins/maestro/internal/agent"
 	"github.com/benaskins/maestro/internal/orchestrate"
+	"github.com/benaskins/maestro/internal/report"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	var (
-		dryRun     bool
-		verbose    bool
-		resumeFrom string
-		coder      string
+		dryRun      bool
+		verbose     bool
+		resumeFrom  string
+		coder       string
+		summaryFile string
 	)
 
 	cmd := &cobra.Command{
@@ -50,8 +52,12 @@ each step to a coding agent, verifying and committing as it goes.`,
 			})
 
 			if result != nil {
-				fmt.Fprintf(os.Stderr, "\nmaestro: %d/%d steps completed, %d skipped, %d failed\n",
-					result.Completed, result.Total, result.Skipped, result.Failed)
+				report.Print(os.Stderr, result)
+				if summaryFile != "" {
+					if writeErr := report.WriteFile(summaryFile, result); writeErr != nil {
+						fmt.Fprintf(os.Stderr, "maestro: warning: could not write summary file: %v\n", writeErr)
+					}
+				}
 			}
 
 			return err
@@ -62,6 +68,7 @@ each step to a coding agent, verifying and committing as it goes.`,
 	cmd.Flags().BoolVar(&verbose, "verbose", false, "show coding agent output")
 	cmd.Flags().StringVar(&resumeFrom, "resume-from", "", "resume from step title or number")
 	cmd.Flags().StringVar(&coder, "coder", "claude", "coding agent: claude")
+	cmd.Flags().StringVar(&summaryFile, "summary-file", "", "write final status summary to this file")
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
