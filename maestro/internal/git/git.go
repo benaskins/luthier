@@ -21,7 +21,9 @@ func Commit(projectDir string, message string) error {
 		return err
 	}
 
-	if err := run(projectDir, "git", "add", "-A"); err != nil {
+	// Stage only files within the project directory, not the entire repo.
+	// Using "git add ." scopes to projectDir since cmd.Dir is set there.
+	if err := run(projectDir, "git", "add", "."); err != nil {
 		return fmt.Errorf("git add: %w", err)
 	}
 
@@ -85,7 +87,7 @@ func InitIfNeeded(projectDir string) error {
 		if err := run(projectDir, "git", "init"); err != nil {
 			return fmt.Errorf("git init: %w", err)
 		}
-		if err := run(projectDir, "git", "add", "-A"); err != nil {
+		if err := run(projectDir, "git", "add", "."); err != nil {
 			return fmt.Errorf("git add: %w", err)
 		}
 		if err := run(projectDir, "git", "commit", "-m", "feat: initial scaffold from luthier"); err != nil {
