@@ -71,11 +71,11 @@ components:
     package: telemetry
 
   # Domain
-  - name: pow
+  - name: phx_gen_auth
     class: domain
-    purpose: Authentication and user management with email/password
-    use_when: User authentication needed.
-    package: pow
+    purpose: Built-in authentication generator (mix phx.gen.auth). Creates Accounts context with email/password registration, login, session management.
+    use_when: User authentication needed. Preferred over third-party libraries since Phoenix 1.7.
+    package: phoenix
 
   - name: guardian
     class: domain
