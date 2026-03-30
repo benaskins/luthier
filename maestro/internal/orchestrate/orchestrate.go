@@ -2,23 +2,35 @@
 package orchestrate
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/benaskins/maestro/internal/agent"
 	gitpkg "github.com/benaskins/maestro/internal/git"
 	"github.com/benaskins/maestro/internal/plan"
+	"github.com/benaskins/maestro/internal/review"
 	"github.com/benaskins/maestro/internal/verify"
 )
+
+// Reviewer assesses whether an implementation satisfies a plan step.
+// review.Reviewer satisfies this interface.
+type Reviewer interface {
+	Review(ctx context.Context, diff string, step plan.Step) (*review.Result, error)
+}
 
 // Config holds orchestration settings.
 type Config struct {
 	ProjectDir string
 	Agent      agent.Agent
+	Reviewer   Reviewer // optional; if nil, semantic review is skipped
 	DryRun     bool
 	Verbose    bool
 	ResumeFrom string
 	MaxRetries int
+	// VerifyCmd overrides automatic verification command detection.
+	// Useful in tests and when the caller already knows the command.
+	VerifyCmd string
 }
 
 // Result summarises a completed orchestration run.
@@ -37,9 +49,12 @@ func Run(cfg Config) (*Result, error) {
 		return nil, fmt.Errorf("read plan: %w", err)
 	}
 
-	verifyCmd, err := verify.DetectCommand(cfg.ProjectDir)
-	if err != nil {
-		return nil, fmt.Errorf("detect verification: %w", err)
+	verifyCmd := cfg.VerifyCmd
+	if verifyCmd == "" {
+		verifyCmd, err = verify.DetectCommand(cfg.ProjectDir)
+		if err != nil {
+			return nil, fmt.Errorf("detect verification: %w", err)
+		}
 	}
 
 	if err := gitpkg.InitIfNeeded(cfg.ProjectDir); err != nil {
@@ -96,7 +111,7 @@ func Run(cfg Config) (*Result, error) {
 }
 
 func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
-	var lastErr string
+	var feedback string
 
 	for attempt := 1; attempt <= cfg.MaxRetries; attempt++ {
 		if attempt > 1 {
@@ -105,12 +120,12 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 
 		// Delegate to coding agent
 		fmt.Fprintf(os.Stderr, "    delegating to coding agent...\n")
-		agentOut, err := cfg.Agent.Implement(cfg.ProjectDir, step, lastErr)
+		agentOut, err := cfg.Agent.Implement(cfg.ProjectDir, step, feedback)
 		if cfg.Verbose && agentOut != "" {
 			fmt.Fprintf(os.Stderr, "    agent output:\n%s\n", agentOut)
 		}
 		if err != nil {
-			lastErr = fmt.Sprintf("Agent error: %s\nOutput: %s", err, agentOut)
+			feedback = fmt.Sprintf("Agent error: %s\nOutput: %s", err, agentOut)
 			fmt.Fprintf(os.Stderr, "    agent failed: %v\n", err)
 			continue
 		}
@@ -119,11 +134,33 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 		fmt.Fprintf(os.Stderr, "    verifying: %s\n", verifyCmd)
 		verifyOut, err := verify.Run(cfg.ProjectDir, verifyCmd)
 		if err != nil {
-			lastErr = fmt.Sprintf("Verification failed:\n%s", verifyOut)
+			feedback = fmt.Sprintf("Verification failed:\n%s", verifyOut)
 			fmt.Fprintf(os.Stderr, "    verification failed\n")
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "    verification passed\n")
+
+		// Run semantic review if a reviewer is configured
+		if cfg.Reviewer != nil {
+			diff, diffErr := gitpkg.Diff(cfg.ProjectDir)
+			if diffErr != nil {
+				feedback = fmt.Sprintf("Failed to get diff for review: %s", diffErr)
+				fmt.Fprintf(os.Stderr, "    could not get diff: %v\n", diffErr)
+				continue
+			}
+
+			reviewResult, reviewErr := cfg.Reviewer.Review(context.Background(), diff, step)
+			if reviewErr != nil {
+				// Review errors are non-fatal: log and proceed to commit.
+				fmt.Fprintf(os.Stderr, "    review error (skipping): %v\n", reviewErr)
+			} else if !reviewResult.Passed {
+				feedback = fmt.Sprintf("Semantic review failed: %s", reviewResult.Reason)
+				fmt.Fprintf(os.Stderr, "    review failed: %s\n", reviewResult.Reason)
+				continue
+			} else {
+				fmt.Fprintf(os.Stderr, "    review passed: %s\n", reviewResult.Reason)
+			}
+		}
 
 		// Commit
 		if err := gitpkg.Commit(cfg.ProjectDir, step.Commit); err != nil {
@@ -133,5 +170,5 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 		return nil
 	}
 
-	return fmt.Errorf("failed after %d attempts. Last error: %s", cfg.MaxRetries, lastErr)
+	return fmt.Errorf("failed after %d attempts. Last error: %s", cfg.MaxRetries, feedback)
 }
