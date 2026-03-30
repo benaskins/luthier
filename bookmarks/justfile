@@ -1,0 +1,11 @@
+build:
+    go build -o bin/bookmarks ./cmd/bookmarks
+
+install: build
+    cp bin/bookmarks ~/.local/bin/bookmarks
+
+test:
+    go test ./...
+
+vet:
+    go vet ./...
