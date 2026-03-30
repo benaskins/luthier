@@ -1,0 +1,220 @@
+name: Phoenix
+language: elixir
+version: "1.8"
+description: Productive web framework for Elixir with real-time capabilities via channels and LiveView.
+
+components:
+  # Core (always available with Phoenix)
+  - name: phoenix
+    class: platform
+    purpose: Web framework with routing, controllers, endpoint, telemetry
+    use_when: Any web application. Always included.
+    package: phoenix
+
+  - name: ecto
+    class: platform
+    purpose: Database toolkit with schemas, migrations, changesets, query DSL
+    use_when: Any database-backed application.
+    package: ecto_sql
+    requires: [postgrex]
+
+  - name: postgrex
+    class: platform
+    purpose: PostgreSQL driver for Ecto
+    use_when: PostgreSQL database (default and recommended).
+    package: postgrex
+
+  - name: phoenix_html
+    class: platform
+    purpose: HTML helpers, form builders, CSRF protection
+    use_when: Server-rendered HTML applications (not API-only).
+    package: phoenix_html
+
+  # Primitives
+  - name: phoenix_live_view
+    class: primitive
+    purpose: Rich real-time UI from server-rendered HTML over WebSocket
+    use_when: Interactive UI without JavaScript framework. The default choice for Phoenix UIs.
+    package: phoenix_live_view
+
+  - name: phoenix_live_dashboard
+    class: primitive
+    purpose: Real-time performance monitoring dashboard (memory, processes, ets, sockets)
+    use_when: Production observability. Almost always included.
+    package: phoenix_live_dashboard
+
+  - name: oban
+    class: primitive
+    purpose: PostgreSQL-backed job processing with scheduling, retries, and cron (no Redis needed)
+    use_when: Background jobs, scheduled tasks, or any async work.
+    package: oban
+
+  - name: phoenix_pubsub
+    class: primitive
+    purpose: Distributed pub/sub for real-time features (included with Phoenix)
+    use_when: Broadcasting events between processes or nodes. Included with Phoenix.
+    package: phoenix_pubsub
+
+  - name: swoosh
+    class: primitive
+    purpose: Email composition and delivery with adapter pattern
+    use_when: Sending transactional or notification emails.
+    package: swoosh
+
+  - name: telemetry
+    class: primitive
+    purpose: Dynamic dispatching library for metrics and instrumentation
+    use_when: Always included. Phoenix and Ecto emit telemetry events by default.
+    package: telemetry
+
+  # Domain
+  - name: pow
+    class: domain
+    purpose: Authentication and user management with email/password
+    use_when: User authentication needed.
+    package: pow
+
+  - name: guardian
+    class: domain
+    purpose: JWT-based authentication for APIs
+    use_when: Token-based API authentication.
+    package: guardian
+
+  - name: bodyguard
+    class: domain
+    purpose: Authorization via policy modules (similar to Pundit)
+    use_when: Role-based or resource-based access control.
+    package: bodyguard
+
+  - name: stripity_stripe
+    class: domain
+    purpose: Stripe API client for payments and subscriptions
+    use_when: Payment processing needed.
+    package: stripity_stripe
+
+  - name: ex_aws
+    class: domain
+    purpose: AWS service clients (S3, SES, SQS, etc.)
+    use_when: AWS integration for file storage, email, queues.
+    package: ex_aws
+
+  - name: absinthe
+    class: domain
+    purpose: GraphQL toolkit with subscriptions and dataloader
+    use_when: GraphQL API needed.
+    package: absinthe
+
+  - name: broadway
+    class: domain
+    purpose: Concurrent, multi-stage data ingestion and processing pipelines
+    use_when: High-throughput data processing (Kafka, SQS, RabbitMQ consumers).
+    package: broadway
+
+  - name: nx
+    class: domain
+    purpose: Multi-dimensional tensors and numerical computing (like NumPy for Elixir)
+    use_when: ML inference, numerical computation.
+    package: nx
+
+  # Experiment
+  - name: bumblebee
+    class: experiment
+    purpose: Pre-trained ML model serving on top of Nx (text, image, audio)
+    use_when: Local ML model inference (sentiment analysis, embeddings, etc).
+    package: bumblebee
+    requires: [nx]
+
+  - name: flame
+    class: experiment
+    purpose: Auto-scaling compute pools for expensive operations
+    use_when: Burst compute (ML inference, video processing, PDF generation).
+    package: flame
+
+  - name: membrane
+    class: experiment
+    purpose: Multimedia processing framework (audio, video streaming)
+    use_when: Media processing pipelines.
+    package: membrane_core
+
+  - name: ash
+    class: experiment
+    purpose: Declarative resource framework with built-in CRUD, auth, GraphQL, JSON:API
+    use_when: Rapid API development with convention-heavy approach. Opinionated alternative to hand-rolled controllers.
+    package: ash
+
+patterns:
+  - requirement: Web application
+    pattern: "mix phx.new APP --database postgres. LiveView for interactive UI."
+
+  - requirement: API-only service
+    pattern: "mix phx.new APP --no-html --no-assets --database postgres. JSON controllers with fallback controller for error handling."
+
+  - requirement: Authentication
+    pattern: "mix phx.gen.auth for built-in generator (phx_gen_auth). Creates accounts context with email/password. For JWT APIs, use Guardian."
+
+  - requirement: Authorization
+    pattern: "Bodyguard policies. One policy module per context."
+
+  - requirement: Background jobs
+    pattern: "Oban with PostgreSQL. Cron-like scheduling via Oban.Pro or Oban plugins. No Redis required."
+
+  - requirement: Real-time updates
+    pattern: "Phoenix LiveView for full-page interactivity. Phoenix Channels + PubSub for targeted pushes."
+
+  - requirement: File uploads
+    pattern: "Phoenix LiveView uploads (built-in) for direct-to-S3. ExAws.S3 for server-side operations."
+
+  - requirement: Payments
+    pattern: "Stripity Stripe with webhook handling via a dedicated controller."
+
+  - requirement: Search
+    pattern: "PostgreSQL full-text search via Ecto fragments. For complex: Elasticsearch via Elastix."
+
+  - requirement: Email
+    pattern: "Swoosh with Mailgun/Postmark adapter. Phoenix.Swoosh for view-based templates."
+
+  - requirement: Deployment
+    pattern: "mix release for self-contained releases. Dockerfile with multi-stage build. Fly.io or bare-metal."
+
+  - requirement: Testing
+    pattern: "ExUnit (built-in). Ecto.Sandbox for concurrent database tests. Wallaby for browser tests."
+
+  - requirement: Data processing
+    pattern: "Broadway for high-throughput pipelines. GenStage for back-pressure."
+
+file_conventions:
+  - path: "mix.exs"
+    description: "Project definition and dependencies"
+  - path: "lib/APP_web/router.ex"
+    description: "URL routing with pipelines"
+  - path: "lib/APP/"
+    description: "Business logic contexts"
+  - path: "lib/APP_web/controllers/"
+    description: "Request handlers"
+  - path: "lib/APP_web/live/"
+    description: "LiveView modules"
+  - path: "lib/APP_web/components/"
+    description: "Reusable UI components (Phoenix 1.7+)"
+  - path: "priv/repo/migrations/"
+    description: "Database migrations"
+  - path: "config/"
+    description: "Environment-specific configuration (dev.exs, prod.exs, runtime.exs)"
+  - path: "test/"
+    description: "ExUnit tests"
+  - path: "README.md"
+    description: "Project documentation"
+  - path: "docs/plan.md"
+    description: "Implementation plan with commit-sized steps"
+
+boundary_notes: |
+  Phoenix/Elixir has strong boundaries via the context pattern. Each context
+  (e.g. Accounts, Catalog, Orders) is a bounded module with a public API.
+  Controllers and LiveViews call context functions, never Ecto directly.
+
+  Non-deterministic boundaries include external API calls and user input.
+  The BEAM VM makes concurrency boundaries explicit via processes and
+  message passing. GenServer state changes are deterministic within a process.
+
+  LiveView has a non-deterministic boundary at the WebSocket connection
+  (user events arrive unpredictably), but the server-side handling is
+  deterministic (same event + same state = same result).

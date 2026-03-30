@@ -1,0 +1,215 @@
+name: Ruby on Rails
+language: ruby
+version: "8.0"
+description: Full-stack web framework for Ruby with convention over configuration.
+
+components:
+  # Core (always available)
+  - name: rails
+    class: platform
+    purpose: Full-stack web framework with MVC, routing, ORM, asset pipeline
+    use_when: Any web application. Always included.
+    package: rails
+
+  - name: activerecord
+    class: platform
+    purpose: ORM with migrations, validations, associations, query interface
+    use_when: Any database-backed application. Included with Rails.
+    package: activerecord
+
+  - name: actionpack
+    class: platform
+    purpose: Controllers, routing, request/response handling
+    use_when: Any web application. Included with Rails.
+    package: actionpack
+
+  - name: activejob
+    class: platform
+    purpose: Background job framework with adapter pattern (Sidekiq, GoodJob, Solid Queue)
+    use_when: Any async/background work. Included with Rails.
+    package: activejob
+
+  # Primitives (core building blocks, add explicitly)
+  - name: turbo
+    class: primitive
+    purpose: SPA-like page updates over WebSocket without custom JavaScript
+    use_when: Interactive UI without a JavaScript framework. Part of Hotwire.
+    package: turbo-rails
+    requires: [stimulus]
+
+  - name: stimulus
+    class: primitive
+    purpose: Modest JavaScript framework for HTML-driven interactions
+    use_when: Client-side behaviour on server-rendered HTML. Part of Hotwire.
+    package: stimulus-rails
+
+  - name: solid_queue
+    class: primitive
+    purpose: Database-backed job queue (Rails 8 default, replaces Redis-based queues)
+    use_when: Background jobs without Redis. Default in Rails 8.
+    package: solid_queue
+
+  - name: solid_cache
+    class: primitive
+    purpose: Database-backed cache store (Rails 8 default)
+    use_when: Caching without Redis/Memcached. Default in Rails 8.
+    package: solid_cache
+
+  - name: solid_cable
+    class: primitive
+    purpose: Database-backed Action Cable adapter (Rails 8 default)
+    use_when: WebSockets without Redis. Default in Rails 8.
+    package: solid_cable
+
+  - name: kamal
+    class: primitive
+    purpose: Zero-downtime deployment to bare metal or VPS via Docker
+    use_when: Deploying to own infrastructure (not Heroku/Render).
+    package: kamal
+
+  # Domain (production-ready, add when PRD matches)
+  - name: devise
+    class: domain
+    purpose: Flexible authentication with email/password, OAuth, 2FA
+    use_when: User authentication needed.
+    package: devise
+
+  - name: pundit
+    class: domain
+    purpose: Minimal authorization via plain Ruby policy objects
+    use_when: Role-based or resource-based access control.
+    package: pundit
+
+  - name: sidekiq
+    class: domain
+    purpose: Redis-backed background job processor with web dashboard
+    use_when: High-throughput job processing. Alternative to Solid Queue when Redis is available.
+    package: sidekiq
+
+  - name: actiontext
+    class: domain
+    purpose: Rich text content with Trix editor, stored as HTML with Active Storage attachments
+    use_when: Rich text editing (blog posts, comments, descriptions).
+    package: actiontext
+    requires: [activestorage]
+
+  - name: activestorage
+    class: domain
+    purpose: File uploads to cloud storage (S3, GCS, Azure) or local disk
+    use_when: File/image uploads needed.
+    package: activestorage
+
+  - name: actionmailer
+    class: domain
+    purpose: Email sending with templates, delivery jobs, and interceptors
+    use_when: Transactional or notification emails.
+    package: actionmailer
+
+  - name: actioncable
+    class: domain
+    purpose: WebSocket framework for real-time features (chat, notifications, live updates)
+    use_when: Real-time push to browser.
+    package: actioncable
+    requires: [solid_cable]
+
+  - name: pay
+    class: domain
+    purpose: Stripe/Braintree/Paddle subscription and payment processing
+    use_when: Payments or subscriptions.
+    package: pay
+
+  - name: searchkick
+    class: domain
+    purpose: Elasticsearch/OpenSearch integration with intelligent search
+    use_when: Full-text search beyond simple SQL LIKE.
+    package: searchkick
+
+  # Experiment (community gems, less stable)
+  - name: mission_control-jobs
+    class: experiment
+    purpose: Web dashboard for Active Job queue monitoring
+    use_when: Need visibility into background job processing.
+    package: mission_control-jobs
+
+  - name: litestack
+    class: experiment
+    purpose: SQLite-backed replacements for Redis (cache, queue, cable, search)
+    use_when: Single-server deployment, want to eliminate external dependencies entirely.
+    package: litestack
+
+  - name: ruby-openai
+    class: experiment
+    purpose: OpenAI API client for GPT, DALL-E, Whisper
+    use_when: LLM/AI integration needed.
+    package: ruby-openai
+
+patterns:
+  - requirement: Web application
+    pattern: "rails new APP --database=postgresql. MVC with ERB views, Turbo for interactivity."
+
+  - requirement: API-only service
+    pattern: "rails new APP --api --database=postgresql. JSON responses, no views/assets."
+
+  - requirement: Authentication
+    pattern: "devise with default modules (database_authenticatable, registerable, recoverable, rememberable, validatable)."
+
+  - requirement: Authorization
+    pattern: "pundit policies. One policy class per model. ApplicationPolicy as base."
+
+  - requirement: Background jobs
+    pattern: "Solid Queue (Rails 8 default). No Redis required. For high-throughput, use Sidekiq."
+
+  - requirement: File uploads
+    pattern: "Active Storage with direct uploads. S3 for production, local disk for development."
+
+  - requirement: Real-time updates
+    pattern: "Turbo Streams over Action Cable with Solid Cable adapter. No custom JavaScript."
+
+  - requirement: Payments
+    pattern: "Pay gem with Stripe. Subscription model with webhooks."
+
+  - requirement: Search
+    pattern: "For simple: PostgreSQL full-text search via pg_search. For complex: Searchkick with Elasticsearch."
+
+  - requirement: Email
+    pattern: "Action Mailer with letter_opener in development, Postmark/SES in production."
+
+  - requirement: Deployment
+    pattern: "Kamal for VPS/bare-metal. Dockerfile with multi-stage build."
+
+  - requirement: Testing
+    pattern: "Minitest (Rails default). System tests with Capybara. Fixtures over factories."
+
+file_conventions:
+  - path: "Gemfile"
+    description: "Ruby dependencies"
+  - path: "config/routes.rb"
+    description: "URL routing"
+  - path: "app/models/"
+    description: "ActiveRecord models"
+  - path: "app/controllers/"
+    description: "Request handlers"
+  - path: "app/views/"
+    description: "ERB templates (not for API-only)"
+  - path: "app/jobs/"
+    description: "Background job classes"
+  - path: "db/migrate/"
+    description: "Database migrations"
+  - path: "config/database.yml"
+    description: "Database configuration"
+  - path: "test/"
+    description: "Minitest tests"
+  - path: ".kamal/"
+    description: "Deployment configuration"
+  - path: "README.md"
+    description: "Project documentation"
+  - path: "docs/plan.md"
+    description: "Implementation plan with commit-sized steps"
+
+boundary_notes: |
+  In Rails, most boundaries are deterministic (request routing, ORM queries,
+  template rendering). Non-deterministic boundaries include external API calls
+  (payment processors, search services, LLM APIs) and user input handling.
+
+  Background jobs cross an async boundary but are deterministic in behaviour
+  (same input produces same output, just deferred in time).

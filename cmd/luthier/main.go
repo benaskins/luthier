@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	talk "github.com/benaskins/axon-talk"
 	"github.com/benaskins/axon-talk/anthropic"
+	"github.com/benaskins/axon-talk/openai"
 	"github.com/benaskins/luthier/internal/analysis"
+	"github.com/benaskins/luthier/internal/catalogue"
 	"github.com/benaskins/luthier/internal/gaps"
 	"github.com/benaskins/luthier/internal/snippets"
 	"github.com/benaskins/luthier/internal/writer"
@@ -25,25 +29,52 @@ func main() {
 }
 
 func run() error {
-	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: luthier <prd.md>")
+	cataloguePath := flag.String("catalogue", "", "path to catalogue YAML (default: built-in axon catalogue)")
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) < 1 {
+		return fmt.Errorf("usage: luthier [-catalogue FILE] <prd.md>")
 	}
-	prdPath := os.Args[1]
+	prdPath := args[0]
 
 	prd, err := os.ReadFile(prdPath)
 	if err != nil {
 		return fmt.Errorf("read PRD: %w", err)
 	}
 
-	client := newClient()
+	provider := os.Getenv("LUTHIER_PROVIDER")
+	if provider == "" {
+		provider = "anthropic"
+	}
+	client := newClient(provider)
 
 	model := defaultModel
 	if m := os.Getenv("LUTHIER_MODEL"); m != "" {
 		model = m
 	}
 
-	fmt.Fprintln(os.Stderr, "luthier: analysing PRD…")
-	spec, err := analysis.Analyse(context.Background(), string(prd), client, model)
+	// Determine system prompt: from catalogue file or built-in default
+	var systemPrompt string
+	if *cataloguePath != "" {
+		cat, err := catalogue.Load(*cataloguePath)
+		if err != nil {
+			return fmt.Errorf("load catalogue: %w", err)
+		}
+		systemPrompt, err = cat.SystemPrompt()
+		if err != nil {
+			return fmt.Errorf("render catalogue: %w", err)
+		}
+		fmt.Fprintf(os.Stderr, "luthier: using %s catalogue (%s %s)\n", cat.Name, cat.Language, cat.Version)
+	}
+
+	fmt.Fprintln(os.Stderr, "luthier: analysing PRD...")
+	var spec *analysis.ScaffoldSpec
+	if systemPrompt != "" {
+		spec, err = analysis.AnalyseWithPrompt(context.Background(), string(prd), client, model, systemPrompt)
+	} else {
+		spec, err = analysis.Analyse(context.Background(), string(prd), client, model)
+	}
 	if err != nil {
 		return fmt.Errorf("analyse: %w", err)
 	}
@@ -56,7 +87,7 @@ func run() error {
 		}
 	}
 
-	// Compose glue code from snippets
+	// Compose glue code from snippets (only for catalogues with snippets)
 	composed := composeFromSpec(spec)
 
 	outDir := filepath.Join(".", spec.Name)
@@ -65,7 +96,7 @@ func run() error {
 		return fmt.Errorf("write: %w", err)
 	}
 
-	fmt.Fprintln(os.Stderr, "luthier: verifying scaffold builds…")
+	fmt.Fprintln(os.Stderr, "luthier: verifying scaffold builds...")
 	if err := verifyBuild(outDir); err != nil {
 		return fmt.Errorf("build verification: %w", err)
 	}
@@ -80,12 +111,36 @@ func composeFromSpec(spec *analysis.ScaffoldSpec) *writer.ComposedOutput {
 		reg.Register(s)
 	}
 
+	// Collect selected modules that have wiring code
 	var moduleNames []string
 	for _, m := range spec.Modules {
 		if s, ok := reg.Get(m.Name); ok {
-			// Only include snippets that have wiring code
 			if s.Setup != "" || s.Helpers != "" {
 				moduleNames = append(moduleNames, m.Name)
+			}
+		}
+	}
+
+	// Resolve transitive deps
+	included := map[string]bool{}
+	for _, n := range moduleNames {
+		included[n] = true
+	}
+	queue := append([]string{}, moduleNames...)
+	for i := 0; i < len(queue); i++ {
+		s, ok := reg.Get(queue[i])
+		if !ok {
+			continue
+		}
+		for _, dep := range s.Deps {
+			if !included[dep] {
+				if ds, dok := reg.Get(dep); dok {
+					if ds.Setup != "" || ds.Helpers != "" {
+						moduleNames = append(moduleNames, dep)
+						queue = append(queue, dep)
+						included[dep] = true
+					}
+				}
 			}
 		}
 	}
@@ -141,26 +196,36 @@ func verifyBuild(dir string) error {
 	return nil
 }
 
-func newClient() *anthropic.Client {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	baseURL := "https://api.anthropic.com"
+func newClient(provider string) talk.LLMClient {
+	switch provider {
+	case "local":
+		localURL := os.Getenv("LUTHIER_LOCAL_URL")
+		if localURL == "" {
+			localURL = "https://models.hestia.internal"
+		}
+		return openai.NewClient(localURL, "")
 
-	accountID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
-	gatewayToken := os.Getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
-	gatewayName := os.Getenv("CLOUDFLARE_AI_GATEWAY_NAME")
-	if gatewayName == "" {
-		gatewayName = "axon"
+	default: // anthropic
+		apiKey := os.Getenv("ANTHROPIC_API_KEY")
+		baseURL := "https://api.anthropic.com"
+
+		accountID := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
+		gatewayToken := os.Getenv("CLOUDFLARE_AI_GATEWAY_TOKEN")
+		gatewayName := os.Getenv("CLOUDFLARE_AI_GATEWAY_NAME")
+		if gatewayName == "" {
+			gatewayName = "axon"
+		}
+
+		var opts []anthropic.Option
+		if accountID != "" && gatewayToken != "" {
+			baseURL = fmt.Sprintf(
+				"https://gateway.ai.cloudflare.com/v1/%s/%s/anthropic",
+				strings.TrimSpace(accountID),
+				gatewayName,
+			)
+			opts = append(opts, anthropic.WithGatewayToken(gatewayToken))
+		}
+
+		return anthropic.NewClient(baseURL, apiKey, opts...)
 	}
-
-	var opts []anthropic.Option
-	if accountID != "" && gatewayToken != "" {
-		baseURL = fmt.Sprintf(
-			"https://gateway.ai.cloudflare.com/v1/%s/%s/anthropic",
-			strings.TrimSpace(accountID),
-			gatewayName,
-		)
-		opts = append(opts, anthropic.WithGatewayToken(gatewayToken))
-	}
-
-	return anthropic.NewClient(baseURL, apiKey, opts...)
 }

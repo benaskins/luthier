@@ -15,17 +15,22 @@ import (
 // raise_gap, finalize) to incrementally build a ScaffoldSpec.
 // The loop exits when the model stops calling tools after finalize.
 func Analyse(ctx context.Context, prd string, client talk.LLMClient, model string) (*ScaffoldSpec, error) {
+	return AnalyseWithPrompt(ctx, prd, client, model, patterns.SystemPrompt)
+}
+
+// AnalyseWithPrompt runs the analysis with a custom system prompt (e.g. from a catalogue).
+func AnalyseWithPrompt(ctx context.Context, prd string, client talk.LLMClient, model string, systemPrompt string) (*ScaffoldSpec, error) {
 	builder := NewSpecBuilder()
 	verbose := os.Getenv("LUTHIER_DEBUG") != ""
 
 	req := talk.NewRequest(
 		model,
 		[]talk.Message{
-			{Role: talk.RoleSystem, Content: patterns.SystemPrompt},
+			{Role: talk.RoleSystem, Content: systemPrompt},
 			{Role: talk.RoleUser, Content: `Analyse this PRD and produce a scaffold spec by calling the provided tools.
 
 You MUST call tools in this order:
-1. Call select_module once for each axon module the project needs
+1. Call select_module once for each component the project needs
 2. Call define_boundary for each interface between components
 3. Call add_plan_step for each commit-sized implementation step
 4. Call raise_gap ONLY for genuine ambiguities you cannot resolve from the catalog
