@@ -3,6 +3,7 @@ module github.com/benaskins/maestro
 go 1.26.1
 
 require (
+	github.com/benaskins/axon-fact v0.1.7
 	github.com/benaskins/axon-loop v0.7.3
 	github.com/benaskins/axon-talk v0.6.4
 	github.com/benaskins/axon-task v0.3.5
@@ -10,6 +11,7 @@ require (
 )
 
 replace (
+	github.com/benaskins/axon-fact => /Users/benaskins/dev/lamina/axon-fact
 	github.com/benaskins/axon-loop => /Users/benaskins/dev/lamina/axon-loop
 	github.com/benaskins/axon-talk => /Users/benaskins/dev/lamina/axon-talk
 	github.com/benaskins/axon-task => /Users/benaskins/dev/lamina/axon-task
@@ -19,7 +21,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/benaskins/axon v0.4.3 // indirect
-	github.com/benaskins/axon-fact v0.1.1 // indirect
 	github.com/benaskins/axon-tool v0.1.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/caarlos0/env/v11 v11.3.1 // indirect
@@ -31,7 +32,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.8.0 // indirect
+	github.com/jackc/pgx/v5 v5.9.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/justinas/alice v1.2.0 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect

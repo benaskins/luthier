@@ -660,14 +660,15 @@ func TestRun_EventsRecordedOnSuccess(t *testing.T) {
 
 	types := eventTypesFrom(t, store, "test-run")
 
-	// Must contain the lifecycle events in order.
+	// Must contain the lifecycle events. The noop agent creates no files so
+	// the commit step emits CommitSkipped rather than CommitSucceeded.
 	wantContains := []string{
 		EventStepStarted,
 		EventAgentInvoked,
 		EventAgentSucceeded,
 		EventVerificationRun,
 		EventVerificationPassed,
-		EventCommitSucceeded,
+		EventCommitSkipped,
 		EventStepCompleted,
 	}
 	for _, want := range wantContains {
