@@ -41,10 +41,11 @@ Execute the plan one step at a time. Each step is a TDD cycle that ends with a c
 
 1. Read the plan. Pick up the next incomplete step.
 2. Write a failing test first, then make it pass, then clean up. Run the full test suite before committing.
-3. Review your change for reuse, quality, and efficiency before committing.
-4. Run `git status`. Only stage files related to this step.
-5. One commit per plan step. Use conventional commit messages (feat/fix/refactor/test/infra/config prefix).
-6. Move to the next step.
+3. Wire new code into the entrypoint immediately. Every step should produce a program that builds, runs, and does something observable end-to-end. Do not defer integration to later steps.
+4. Review your change for reuse, quality, and efficiency before committing.
+5. Run `git status`. Only stage files related to this step.
+6. One commit per plan step. Use conventional commit messages (feat/fix/refactor/test/infra/config prefix).
+7. Move to the next step.
 
 Stop if:
 - A step reveals a design question the plan did not anticipate
