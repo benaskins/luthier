@@ -1,6 +1,6 @@
 # bookmarks
 
-Create new Rails application with PostgreSQL database. Configure database.yml for development/production/tenancy. Run initial setup. Test by running rails server and accessing root path.
+Create new Rails application with PostgreSQL database, set up basic structure. Run rails new bookmarks --database=postgresql. Verify database connection and basic Rails setup.
 
 ## Build & Test
 
@@ -13,17 +13,19 @@ just install   # copies to ~/.local/bin/bookmarks
 
 ## Module Selections
 
-- **rails**: Full-stack web framework required for MVC architecture, routing, ORM, and asset pipeline. Core platform for this bookmark management web application. (deterministic)
-- **activerecord**: ORM needed for PostgreSQL database interactions, migrations, validations, and associations. Required for Bookmark, User, Tag models. (deterministic)
-- **actionpack**: Controllers and routing required for handling HTTP requests, bookmark CRUD operations, and API endpoints. (deterministic)
-- **activejob**: Background job framework needed for fetching URL metadata (title/description) asynchronously and processing bulk imports. (deterministic)
-- **turbo**: SPA-like page updates over WebSocket for interactive bookmark management without custom JavaScript. Used for form submissions and search results. (deterministic)
-- **stimulus**: Modest JavaScript framework for keyboard shortcuts (new bookmark, search, navigate) and client-side interactions on server-rendered HTML. (deterministic)
-- **solid_queue**: Database-backed job queue (Rails 8 default) for background jobs. No Redis required, matches single-server deployment constraint. (deterministic)
-- **devise**: Flexible authentication with email/password required for user login. Provides secure hashed passwords, CSRF protection, and session management. (deterministic)
-- **pundit**: Authorization via plain Ruby policy objects for controlling access to bookmark CRUD operations (users can only manage their own bookmarks). (deterministic)
-- **searchkick**: Full-text search across titles, descriptions, URLs, and tags required. PostgreSQL full-text search is insufficient for the search quality requirements (top 5 results must contain target link). Searchkick with Elasticsearch/OpenSearch provides intelligent search beyond simple SQL LIKE. (deterministic)
-- **activestorage**: File uploads needed for importing bookmark exports (HTML/JSON files). Active Storage handles file processing and storage. (deterministic)
+- **rails**: Full-stack web framework needed for MVC architecture, routing, views, and ORM integration. Core platform for the bookmark web application. (deterministic)
+- **activerecord**: ORM with migrations, validations, and query interface needed for Bookmark, Tag, and User models with PostgreSQL storage. (deterministic)
+- **actionpack**: Controllers and routing needed for web interface and API endpoints. Handles request/response cycle for bookmark CRUD operations. (deterministic)
+- **activejob**: Background job framework needed for async URL fetching (title/description extraction) to meet 3-second save time requirement. (deterministic)
+- **solid_queue**: Database-backed job queue (Rails 8 default) for single-server deployment without Redis. Required for async URL fetching jobs. (deterministic)
+- **devise**: User authentication with email/password needed. Provides secure password hashing, CSRF protection, session management, and password reset flows. (deterministic)
+- **pundit**: Authorization framework needed to ensure users can only access their own bookmarks. One policy class per model for resource-based access control. (deterministic)
+- **turbo**: SPA-like page updates over WebSocket for fast, interactive UI without custom JavaScript. Used for bookmark list updates and search results. (deterministic)
+- **stimulus**: Modest JavaScript framework for keyboard shortcuts and client-side interactions on server-rendered HTML. Required for keyboard navigation. (deterministic)
+- **actiontext**: Rich text content support for bookmark descriptions. Stored as HTML with Active Storage attachments for any embedded content. (deterministic)
+- **activestorage**: File upload support for bookmark attachments. Used by ActionText for storing images/files in descriptions. (deterministic)
+- **actionmailer**: Email sending for Devise password reset and confirmation flows. Required for secure authentication user experience. (deterministic)
+- **kamal**: Zero-downtime deployment to single VPS/bare metal via Docker. Required for single-server deployment constraint. (deterministic)
 
 ## Deterministic / Non-deterministic Boundary
 
@@ -32,9 +34,11 @@ just install   # copies to ~/.local/bin/bookmarks
 | actionpack | devise | det |
 | actionpack | pundit | det |
 | actionpack | activerecord | det |
-| activerecord | searchkick | det |
 | activejob | activerecord | det |
-| actionpack | turbo | det |
-| actionpack | stimulus | det |
-| actionpack | activestorage | det |
+| solid_queue | activejob | det |
+| turbo | actionpack | det |
+| stimulus | turbo | det |
+| devise | actionmailer | det |
+| actiontext | activestorage | det |
+| kamal | rails | det |
 

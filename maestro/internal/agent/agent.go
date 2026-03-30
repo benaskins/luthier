@@ -37,6 +37,16 @@ func runCommandWithWriter(dir string, w io.Writer, name string, args ...string) 
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 
+	// Strip ANTHROPIC_API_KEY so Claude Code uses OAuth (Max plan) instead of API billing
+	env := os.Environ()
+	filtered := env[:0]
+	for _, e := range env {
+		if !strings.HasPrefix(e, "ANTHROPIC_API_KEY=") {
+			filtered = append(filtered, e)
+		}
+	}
+	cmd.Env = filtered
+
 	var stdout, stderr bytes.Buffer
 	if w != nil {
 		cmd.Stdout = io.MultiWriter(&stdout, w)
