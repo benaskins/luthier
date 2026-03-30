@@ -7,8 +7,20 @@ import (
 	"strings"
 )
 
+// ErrNoChanges is returned when there is nothing to commit.
+var ErrNoChanges = fmt.Errorf("no changes to commit")
+
+// ErrMergeConflict is returned when the working directory has unresolved merge conflicts.
+var ErrMergeConflict = fmt.Errorf("unresolved merge conflicts")
+
 // Commit stages all changes and commits with the given message.
+// Returns ErrNoChanges if there is nothing to commit.
+// Returns ErrMergeConflict if there are unresolved conflicts.
 func Commit(projectDir string, message string) error {
+	if err := HasConflicts(projectDir); err != nil {
+		return err
+	}
+
 	if err := run(projectDir, "git", "add", "-A"); err != nil {
 		return fmt.Errorf("git add: %w", err)
 	}
@@ -19,13 +31,34 @@ func Commit(projectDir string, message string) error {
 		return fmt.Errorf("git diff: %w", err)
 	}
 	if strings.TrimSpace(out) == "" {
-		return nil // no changes needed — step already implemented
+		return ErrNoChanges
 	}
 
 	if err := run(projectDir, "git", "commit", "-m", message); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 	return nil
+}
+
+// HasConflicts returns ErrMergeConflict if the working directory has unresolved merge conflicts.
+func HasConflicts(projectDir string) error {
+	out, err := output(projectDir, "git", "diff", "--name-only", "--diff-filter=U")
+	if err != nil {
+		return nil // not in a git repo or other non-conflict error
+	}
+	if strings.TrimSpace(out) != "" {
+		return fmt.Errorf("%w: %s", ErrMergeConflict, strings.TrimSpace(out))
+	}
+	return nil
+}
+
+// IsClean returns true if the working directory has no uncommitted changes.
+func IsClean(projectDir string) (bool, error) {
+	out, err := output(projectDir, "git", "status", "--porcelain")
+	if err != nil {
+		return false, fmt.Errorf("git status: %w", err)
+	}
+	return strings.TrimSpace(out) == "", nil
 }
 
 // Diff returns the staged + unstaged diff.

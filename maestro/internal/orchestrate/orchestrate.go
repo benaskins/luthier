@@ -164,9 +164,14 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 
 		// Commit
 		if err := gitpkg.Commit(cfg.ProjectDir, step.Commit); err != nil {
-			return fmt.Errorf("commit: %w", err)
+			if err == gitpkg.ErrNoChanges {
+				fmt.Fprintf(os.Stderr, "    nothing to commit for: %s\n", step.Commit)
+			} else {
+				return fmt.Errorf("commit: %w", err)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "    committed: %s\n", step.Commit)
 		}
-		fmt.Fprintf(os.Stderr, "    committed: %s\n", step.Commit)
 		return nil
 	}
 
