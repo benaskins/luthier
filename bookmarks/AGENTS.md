@@ -1,6 +1,6 @@
 # bookmarks
 
-Create new Rails application with PostgreSQL database, configure database.yml for local and production environments. Run initial setup to verify database connection. Test: rails db:create and rails db:migrate should succeed.
+Create new Rails application with PostgreSQL database. Configure database.yml for development/production/tenancy. Run initial setup. Test by running rails server and accessing root path.
 
 ## Build & Test
 
@@ -13,33 +13,28 @@ just install   # copies to ~/.local/bin/bookmarks
 
 ## Module Selections
 
-- **rails**: Core full-stack web framework for the bookmarks application with MVC, routing, ORM, and asset pipeline (deterministic)
-- **devise**: User authentication with email/password as required by the PRD (deterministic)
-- **pundit**: Authorization to ensure users can only manage their own bookmarks (deterministic)
-- **solid_queue**: Background job processing for URL metadata fetching and bookmark imports without Redis dependency (deterministic)
-- **solid_cache**: Database-backed caching for single-server deployment without Redis (deterministic)
-- **solid_cable**: Database-backed Action Cable adapter for potential real-time features, Rails 8 default (deterministic)
-- **turbo**: Interactive UI with SPA-like page updates without custom JavaScript framework (deterministic)
-- **stimulus**: Client-side behavior for keyboard shortcuts and form interactions on server-rendered HTML (deterministic)
-- **searchkick**: Full-text search across bookmarks titles, descriptions, URLs, and tags with intelligent ranking (non-deterministic)
-- **kamal**: Zero-downtime deployment to single VPS/bare metal server as specified in constraints (deterministic)
-- **actionmailer**: Transactional emails for password reset and account notifications (deterministic)
+- **rails**: Full-stack web framework required for MVC architecture, routing, ORM, and asset pipeline. Core platform for this bookmark management web application. (deterministic)
+- **activerecord**: ORM needed for PostgreSQL database interactions, migrations, validations, and associations. Required for Bookmark, User, Tag models. (deterministic)
+- **actionpack**: Controllers and routing required for handling HTTP requests, bookmark CRUD operations, and API endpoints. (deterministic)
+- **activejob**: Background job framework needed for fetching URL metadata (title/description) asynchronously and processing bulk imports. (deterministic)
+- **turbo**: SPA-like page updates over WebSocket for interactive bookmark management without custom JavaScript. Used for form submissions and search results. (deterministic)
+- **stimulus**: Modest JavaScript framework for keyboard shortcuts (new bookmark, search, navigate) and client-side interactions on server-rendered HTML. (deterministic)
+- **solid_queue**: Database-backed job queue (Rails 8 default) for background jobs. No Redis required, matches single-server deployment constraint. (deterministic)
+- **devise**: Flexible authentication with email/password required for user login. Provides secure hashed passwords, CSRF protection, and session management. (deterministic)
+- **pundit**: Authorization via plain Ruby policy objects for controlling access to bookmark CRUD operations (users can only manage their own bookmarks). (deterministic)
+- **searchkick**: Full-text search across titles, descriptions, URLs, and tags required. PostgreSQL full-text search is insufficient for the search quality requirements (top 5 results must contain target link). Searchkick with Elasticsearch/OpenSearch provides intelligent search beyond simple SQL LIKE. (deterministic)
+- **activestorage**: File uploads needed for importing bookmark exports (HTML/JSON files). Active Storage handles file processing and storage. (deterministic)
 
 ## Deterministic / Non-deterministic Boundary
 
 | From | To | Type |
 |------|----|------|
-| rails | devise | det |
-| rails | pundit | det |
-| rails | solid_queue | det |
-| rails | searchkick | non-det |
-| rails | turbo | det |
-| rails | stimulus | det |
-| rails | kamal | det |
-| rails | actionmailer | det |
-| devise | pundit | det |
-| solid_queue | rails | det |
-| searchkick | rails | non-det |
-| turbo | rails | det |
-| stimulus | rails | det |
+| actionpack | devise | det |
+| actionpack | pundit | det |
+| actionpack | activerecord | det |
+| activerecord | searchkick | det |
+| activejob | activerecord | det |
+| actionpack | turbo | det |
+| actionpack | stimulus | det |
+| actionpack | activestorage | det |
 

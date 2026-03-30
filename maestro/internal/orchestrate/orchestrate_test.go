@@ -431,3 +431,179 @@ Commit: ` + "`feat: second step`"
 		t.Errorf("Completed = %d, want 2", result.Completed)
 	}
 }
+
+// threeStepPlan is a three-step plan used by resume-from tests.
+const threeStepPlan = `## Step 1 — first step
+
+First thing.
+
+Commit: ` + "`feat: first step`" + `
+
+## Step 2 — second step
+
+Second thing.
+
+Commit: ` + "`feat: second step`" + `
+
+## Step 3 — third step
+
+Third thing.
+
+Commit: ` + "`feat: third step`"
+
+func TestRun_ResumeFromTitle(t *testing.T) {
+	dir := newTestProject(t, threeStepPlan)
+
+	a := &countdownAgent{failCount: 0}
+	result, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      a,
+		VerifyCmd:  "true",
+		ResumeFrom: "second step",
+		MaxRetries: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: unexpected error: %v", err)
+	}
+	if result.Total != 3 {
+		t.Errorf("Total = %d, want 3", result.Total)
+	}
+	if result.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1", result.Skipped)
+	}
+	if result.Completed != 2 {
+		t.Errorf("Completed = %d, want 2", result.Completed)
+	}
+	// Agent should only be called for steps 2 and 3.
+	if a.calls != 2 {
+		t.Errorf("agent called %d times, want 2", a.calls)
+	}
+}
+
+func TestRun_ResumeFromNumber(t *testing.T) {
+	dir := newTestProject(t, threeStepPlan)
+
+	a := &countdownAgent{failCount: 0}
+	result, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      a,
+		VerifyCmd:  "true",
+		ResumeFrom: "2",
+		MaxRetries: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: unexpected error: %v", err)
+	}
+	if result.Skipped != 1 {
+		t.Errorf("Skipped = %d, want 1", result.Skipped)
+	}
+	if result.Completed != 2 {
+		t.Errorf("Completed = %d, want 2", result.Completed)
+	}
+	if a.calls != 2 {
+		t.Errorf("agent called %d times, want 2", a.calls)
+	}
+}
+
+func TestRun_ResumeFromFirstStep(t *testing.T) {
+	dir := newTestProject(t, threeStepPlan)
+
+	a := &countdownAgent{failCount: 0}
+	result, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      a,
+		VerifyCmd:  "true",
+		ResumeFrom: "1",
+		MaxRetries: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: unexpected error: %v", err)
+	}
+	if result.Skipped != 0 {
+		t.Errorf("Skipped = %d, want 0", result.Skipped)
+	}
+	if result.Completed != 3 {
+		t.Errorf("Completed = %d, want 3", result.Completed)
+	}
+	if a.calls != 3 {
+		t.Errorf("agent called %d times, want 3", a.calls)
+	}
+}
+
+func TestRun_ResumeFromInvalidValue(t *testing.T) {
+	dir := newTestProject(t, threeStepPlan)
+
+	_, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      &countdownAgent{},
+		VerifyCmd:  "true",
+		ResumeFrom: "nonexistent step",
+		MaxRetries: 3,
+	})
+	if err == nil {
+		t.Fatal("Run: expected error for unknown resume-from value, got nil")
+	}
+	if !strings.Contains(err.Error(), "--resume-from") {
+		t.Errorf("error = %q, want it to mention --resume-from", err.Error())
+	}
+}
+
+func TestRun_ResumeFromAfterPartialRun(t *testing.T) {
+	dir := newTestProject(t, threeStepPlan)
+
+	// Simulate steps 1 and 2 already committed (partial prior run).
+	if err := runOsExec(dir, "git", "commit", "--allow-empty", "-m", "feat: first step"); err != nil {
+		t.Fatalf("pre-commit step 1: %v", err)
+	}
+	if err := runOsExec(dir, "git", "commit", "--allow-empty", "-m", "feat: second step"); err != nil {
+		t.Fatalf("pre-commit step 2: %v", err)
+	}
+
+	a := &countdownAgent{failCount: 0}
+	result, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      a,
+		VerifyCmd:  "true",
+		ResumeFrom: "3",
+		MaxRetries: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: unexpected error: %v", err)
+	}
+	// Steps 1 and 2 are skipped (already committed); step 3 is executed.
+	if result.Skipped != 2 {
+		t.Errorf("Skipped = %d, want 2", result.Skipped)
+	}
+	if result.Completed != 1 {
+		t.Errorf("Completed = %d, want 1", result.Completed)
+	}
+	if a.calls != 1 {
+		t.Errorf("agent called %d times, want 1 (only step 3)", a.calls)
+	}
+}
+
+func TestRun_ResumeFromSkippedStepsNotExecuted(t *testing.T) {
+	dir := newTestProject(t, threeStepPlan)
+
+	a := &countdownAgent{failCount: 0}
+	result, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      a,
+		VerifyCmd:  "true",
+		ResumeFrom: "third step",
+		MaxRetries: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: unexpected error: %v", err)
+	}
+	// Steps 1 and 2 skipped; only step 3 executed.
+	if result.Skipped != 2 {
+		t.Errorf("Skipped = %d, want 2", result.Skipped)
+	}
+	if result.Completed != 1 {
+		t.Errorf("Completed = %d, want 1", result.Completed)
+	}
+	if a.calls != 1 {
+		t.Errorf("agent called %d times, want 1 (only step 3)", a.calls)
+	}
+}

@@ -159,3 +159,42 @@ func TestHasConflicts_CleanRepo(t *testing.T) {
 		t.Errorf("expected no conflicts in clean repo, got %v", err)
 	}
 }
+
+func TestIsStepCommitted_ReturnsTrueForExistingCommit(t *testing.T) {
+	dir := initRepo(t)
+	msg := "feat: add feature"
+	cmd := newCmd(dir, "git", "commit", "--allow-empty", "-m", msg)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
+
+	if !git.IsStepCommitted(dir, msg) {
+		t.Errorf("IsStepCommitted(%q) = false, want true", msg)
+	}
+}
+
+func TestIsStepCommitted_ReturnsFalseForMissingCommit(t *testing.T) {
+	dir := initRepo(t)
+
+	if git.IsStepCommitted(dir, "feat: this was never committed") {
+		t.Error("IsStepCommitted returned true for a commit that was never made")
+	}
+}
+
+func TestIsStepCommitted_MatchesSubstringInMessage(t *testing.T) {
+	dir := initRepo(t)
+	msg := "feat: implement resume-from functionality"
+	cmd := newCmd(dir, "git", "commit", "--allow-empty", "-m", msg)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
+
+	// Full message should match.
+	if !git.IsStepCommitted(dir, msg) {
+		t.Errorf("IsStepCommitted(%q) = false, want true", msg)
+	}
+	// A different message should not match.
+	if git.IsStepCommitted(dir, "feat: implement something else") {
+		t.Error("IsStepCommitted returned true for a non-matching message")
+	}
+}

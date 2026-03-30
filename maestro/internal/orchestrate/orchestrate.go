@@ -65,6 +65,19 @@ func Run(cfg Config) (*Result, error) {
 		cfg.MaxRetries = 3
 	}
 
+	if cfg.ResumeFrom != "" {
+		found := false
+		for _, s := range steps {
+			if s.Title == cfg.ResumeFrom || fmt.Sprintf("%d", s.Number) == cfg.ResumeFrom {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("--resume-from %q does not match any step title or number", cfg.ResumeFrom)
+		}
+	}
+
 	result := &Result{Total: len(steps)}
 	resuming := cfg.ResumeFrom != ""
 

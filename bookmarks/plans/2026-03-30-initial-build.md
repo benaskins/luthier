@@ -5,115 +5,85 @@ Each step is commit-sized. Execute via `/iterate`.
 
 ## Step 1 — Initialize Rails application with PostgreSQL
 
-Create new Rails application with PostgreSQL database, configure database.yml for local and production environments. Run initial setup to verify database connection. Test: rails db:create and rails db:migrate should succeed.
+Create new Rails application with PostgreSQL database. Configure database.yml for development/production/tenancy. Run initial setup. Test by running rails server and accessing root path.
 
-Commit: `feat: initialize rails app with postgresql database`
+Commit: `feat: initialize rails application with postgresql`
 
-## Step 2 — Configure Devise authentication
+## Step 2 — Add and configure Devise authentication
 
-Install and configure Devise gem with default modules (database_authenticatable, registerable, recoverable, rememberable, validatable). Generate Devise models and migrations. Add authentication helpers to ApplicationController. Test: User registration, login, logout, and password reset flows work correctly.
+Install devise gem, run generator to create User model with email/password authentication. Configure devise modules (database_authenticatable, registerable, recoverable, rememberable, validatable). Add sessions and registrations routes. Test by creating a user account and logging in.
 
-Commit: `feat: configure devise authentication`
+Commit: `feat: add devise authentication with email and password`
 
-## Step 3 — Create Bookmark model with validations
+## Step 3 — Create Bookmark and Tag models with associations
 
-Generate Bookmark model with fields: url (string, indexed), title (string), description (text), user_id (foreign key). Add validations for url format and presence. Create belongs_to :user association. Test: Bookmark creation with valid/invalid data.
+Generate Bookmark model with url, title, description, user_id fields. Generate Tag model. Create join table for bookmark-tag many-to-many relationship. Add validations for URL format, presence of title. Test by creating bookmarks and tags with associations.
 
-Commit: `feat: create bookmark model with validations`
+Commit: `feat: create bookmark and tag models with associations`
 
-## Step 4 — Implement Tag model and association
+## Step 4 — Set up Pundit authorization policies
 
-Create Tag model with name field. Implement has_many :through association between Bookmark and Tag via BookmarkTag join table. Add tag name uniqueness validation. Test: Creating bookmarks with multiple tags, querying by tags.
+Install pundit gem. Create ApplicationPolicy as base class. Create BookmarkPolicy to ensure users can only manage their own bookmarks. Configure controller to include Pundit and use authorize calls. Test by attempting to access another user's bookmark.
 
-Commit: `feat: implement tag model and bookmark-tag association`
+Commit: `feat: set up pundit authorization policies for bookmarks`
 
-## Step 5 — Setup Pundit authorization
+## Step 5 — Configure Solid Queue for background jobs
 
-Install Pundit gem, generate ApplicationPolicy base class. Create BookmarkPolicy to ensure users can only manage their own bookmarks. Add before_action :authenticate_user! and authorization checks to controllers. Test: Users cannot access/modify other users' bookmarks.
+Install and configure solid_queue gem. Create config/queueers.yml. Set up Solid Queue as the default Active Job backend. Test by running a background job and verifying it processes via solid_queue.
 
-Commit: `feat: setup pundit authorization for bookmarks`
+Commit: `feat: configure solid_queue as job backend`
 
-## Step 6 — Configure Solid Queue for background jobs
+## Step 6 — Create Bookmark CRUD controllers with Turbo
 
-Install and configure solid_queue gem. Generate queue tables and run migrations. Configure Active Job to use solid_queue adapter. Create initial job processor configuration. Test: Background jobs are queued and processed correctly.
+Generate BookmarksController with index, show, new, create, edit, update, destroy actions. Use Turbo for form submissions and responses. Implement pagination with will_paginate or Kaminari. Add keyboard shortcuts via Stimulus for quick navigation. Test by creating, editing, and deleting bookmarks through the UI.
 
-Commit: `feat: configure solid_queue background jobs`
+Commit: `feat: create bookmark CRUD controllers with Turbo integration`
 
-## Step 7 — Create URL fetcher job for metadata extraction
+## Step 7 — Implement URL metadata fetching background job
 
-Create FetchBookmarkMetadata job that accepts a bookmark_id, fetches the URL content, extracts title and description using HTTP requests and HTML parsing. Update bookmark with fetched data. Test: Job successfully fetches and saves metadata from valid URLs.
+Create FetchBookmarkMetadata job that takes a URL and extracts title and description using Nokogiri and OpenURI. Configure Active Job to process this job in background. Update Bookmark creation to enqueue this job. Test by creating a bookmark and verifying metadata is populated after job runs.
 
-Commit: `feat: create url metadata fetcher job`
+Commit: `feat: implement URL metadata fetching job`
 
-## Step 8 — Setup Searchkick for full-text search
+## Step 8 — Integrate Searchkick for full-text search
 
-Install Searchkick gem, configure Elasticsearch connection. Add searchkick to Bookmark model with searchable fields: title, description, url, tags. Implement reindex logic after bookmark updates. Test: Search returns correct results across all indexed fields.
+Install searchkick gem and configure Elasticsearch connection. Add searchkick to Bookmark model with searchable fields: title, description, url, tags. Create search results view with Turbo Streams for live updates. Test by searching for keywords and verifying results include relevant bookmarks.
 
-Commit: `feat: setup searchkick for full-text search`
+Commit: `feat: integrate searchkick for full-text search`
 
-## Step 9 — Create bookmark CRUD controllers
+## Step 9 — Add bookmark import from HTML/JSON files
 
-Generate BookmarksController with index, show, new, create, edit, update, destroy actions. Implement pagination with Kaminari or will_paginate. Add authorization checks to each action. Test: All CRUD operations work with proper authorization.
+Create ImportBookmarksController to handle file uploads. Use Active Storage for file attachment. Parse HTML (Netscape bookmark format) and JSON exports. Create background job to process imports and create bookmarks in bulk. Test by uploading a bookmark export file and verifying bookmarks are created.
 
-Commit: `feat: create bookmark CRUD controllers`
+Commit: `feat: add bookmark import from HTML/JSON files`
 
-## Step 10 — Build bookmark form with auto-fetch
+## Step 10 — Add API endpoint for bookmark creation
 
-Create new/edit bookmark form with URL input that triggers metadata fetch via Turbo Frame or Stimulus controller. Display fetched title and description in real-time. Add tag input with autocomplete. Test: URL paste triggers fetch, form submits with all data.
+Create API namespace with BookmarksController for JSON responses. Implement create action that accepts URL and optional tags. Add API authentication (token-based or session-based). Test by making POST request to /api/v1/bookmarks with curl or similar tool.
 
-Commit: `feat: build bookmark form with auto-fetch`
+Commit: `feat: add API endpoint for programmatic bookmark creation`
 
-## Step 11 — Implement search interface
+## Step 11 — Implement keyboard shortcuts with Stimulus
 
-Create search page with query input and results display. Show bookmark cards with title, description, URL, and tags. Implement search filtering and pagination. Test: Search returns relevant results, displays correctly.
+Create Stimulus controllers for keyboard shortcuts: Ctrl+N for new bookmark, Ctrl+F for focus search, arrow keys for navigation. Add event listeners and integrate with existing views. Test by using keyboard shortcuts to navigate and create bookmarks without mouse.
 
-Commit: `feat: implement search interface`
+Commit: `feat: implement keyboard shortcuts with Stimulus`
 
-## Step 12 — Add keyboard shortcuts with Stimulus
+## Step 12 — Add responsive layout and views
 
-Implement Stimulus controller for keyboard shortcuts: 'n' for new bookmark, '/' for search focus, 'j/k' for navigation. Add visual hints for shortcuts. Test: Keyboard shortcuts trigger correct actions without mouse.
+Create application layout with responsive CSS using Tailwind or Bootstrap. Design bookmark list view with pagination, search form, and quick actions. Create bookmark form partials for new/edit. Test by viewing on mobile and desktop browsers, ensuring responsive behavior.
 
-Commit: `feat: add keyboard shortcuts with stimulus`
+Commit: `feat: add responsive layout and views`
 
-## Step 13 — Create bookmark import functionality
+## Step 13 — Add tests for bookmark functionality
 
-Create ImportBookmarksController to handle HTML (Netscape format) and JSON bookmark imports. Parse uploaded files, create bookmarks and tags for user. Queue import job for large files. Test: Successfully imports bookmarks from HTML and JSON formats.
+Write Minitest unit tests for Bookmark and Tag models with validations. Write controller tests for BookmarksController actions. Write system tests with Capybara for user flows (create bookmark, search, import). Test by running rails test and ensuring all tests pass.
 
-Commit: `feat: create bookmark import functionality`
+Commit: `feat: add tests for all bookmark functionality`
 
-## Step 14 — Implement API endpoint for programmatic bookmark creation
+## Step 14 — Configure Kamal for single-server deployment
 
-Create Api::BookmarksController with create action accepting URL, title, description, and tags. Implement API authentication (API key or token). Return JSON response. Test: API endpoint accepts valid requests and returns correct JSON.
+Install kamal gem and generate configuration. Create Dockerfile with multi-stage build for Rails app. Configure kamal.yml for single VPS deployment. Set up database migrations and asset precompilation in deploy process. Test by running kamal deploy to a test server.
 
-Commit: `feat: implement api endpoint for bookmark creation`
-
-## Step 15 — Configure Kamal deployment
-
-Generate Kamal configuration files for single-server deployment. Create Dockerfile with multi-stage build. Configure database, cache, and queue services. Set up production environment variables. Test: Kamal deploy command works on target server.
-
-Commit: `feat: configure kamal deployment`
-
-## Step 16 — Setup Action Mailer for transactional emails
-
-Configure Action Mailer with letter_opener for development and production SMTP settings. Generate password reset and account confirmation mailers. Test: Emails are sent and received correctly in both environments.
-
-Commit: `feat: setup action mailer for transactional emails`
-
-## Step 17 — Configure solid_cache for caching
-
-Install and configure solid_cache gem. Set up cache store in development and production. Implement caching for search results and frequently accessed bookmarks. Test: Cache hits improve response times.
-
-Commit: `feat: configure solid_cache for caching`
-
-## Step 18 — Write comprehensive test suite
-
-Add system tests with Capybara for critical user flows: registration, bookmark creation, search, import. Add model tests for validations and associations. Add controller tests for authorization. Test: All tests pass with >90% coverage.
-
-Commit: `feat: write comprehensive test suite`
-
-## Step 19 — Create responsive layout with Turbo
-
-Build main application layout with navigation, search bar, and responsive design. Implement Turbo Frames for partial page updates. Add loading states and error handling. Test: Interface is responsive and updates work without full page reload.
-
-Commit: `feat: create responsive layout with turbo`
+Commit: `infra: configure kamal for single-server deployment`
 
