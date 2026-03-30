@@ -2,9 +2,11 @@ package git_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/benaskins/maestro/internal/git"
@@ -197,4 +199,119 @@ func TestIsStepCommitted_MatchesSubstringInMessage(t *testing.T) {
 	if git.IsStepCommitted(dir, "feat: implement something else") {
 		t.Error("IsStepCommitted returned true for a non-matching message")
 	}
+}
+
+func TestDiff_CleanRepo(t *testing.T) {
+	dir := initRepo(t)
+
+	diff, err := git.Diff(dir)
+	if err != nil {
+		t.Fatalf("Diff: %v", err)
+	}
+	if diff != "" {
+		t.Errorf("expected empty diff for clean repo, got %q", diff)
+	}
+}
+
+func TestDiff_WithStagedAndUnstagedChanges(t *testing.T) {
+	dir := initRepo(t)
+	writeFile(t, dir, "staged.txt", "staged content")
+	writeFile(t, dir, "unstaged.txt", "unstaged content")
+
+	// Stage one file.
+	cmd := newCmd(dir, "git", "add", "staged.txt")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v\n%s", err, out)
+	}
+
+	diff, err := git.Diff(dir)
+	if err != nil {
+		t.Fatalf("Diff: %v", err)
+	}
+	// HEAD diff includes both staged and unstaged changes relative to HEAD.
+	if diff == "" {
+		t.Error("expected non-empty diff when files are modified")
+	}
+}
+
+func TestDiff_AfterCommit(t *testing.T) {
+	dir := initRepo(t)
+	writeFile(t, dir, "file.txt", "content")
+	if err := git.Commit(dir, "feat: add file"); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+
+	diff, err := git.Diff(dir)
+	if err != nil {
+		t.Fatalf("Diff: %v", err)
+	}
+	// After a clean commit with no new changes, diff should be empty.
+	if diff != "" {
+		t.Errorf("expected empty diff after clean commit, got %q", diff)
+	}
+}
+
+func TestInitIfNeeded_NewDirectory(t *testing.T) {
+	dir := t.TempDir()
+	// Write a file so the initial commit has content.
+	writeFile(t, dir, "main.go", "package main")
+
+	if err := git.InitIfNeeded(dir); err != nil {
+		t.Fatalf("InitIfNeeded: %v", err)
+	}
+
+	// After init, git rev-parse --git-dir should succeed.
+	cmd := newCmd(dir, "git", "rev-parse", "--git-dir")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git rev-parse after InitIfNeeded: %v\n%s", err, out)
+	}
+
+	// There should be at least one commit.
+	cmd2 := newCmd(dir, "git", "log", "--oneline")
+	out, err := cmd2.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log: %v\n%s", err, out)
+	}
+	if string(out) == "" {
+		t.Error("expected at least one commit after InitIfNeeded")
+	}
+}
+
+func TestInitIfNeeded_ExistingRepo(t *testing.T) {
+	dir := initRepo(t)
+
+	// Should be a no-op; no error, no additional commits.
+	countBefore := commitCount(t, dir)
+	if err := git.InitIfNeeded(dir); err != nil {
+		t.Fatalf("InitIfNeeded on existing repo: %v", err)
+	}
+	countAfter := commitCount(t, dir)
+	if countAfter != countBefore {
+		t.Errorf("InitIfNeeded created %d extra commits on an existing repo", countAfter-countBefore)
+	}
+}
+
+func TestInitIfNeeded_EmptyDirectory(t *testing.T) {
+	dir := t.TempDir()
+	// No files — initial commit will need --allow-empty equivalent.
+	// The function uses git add -A then commits; with no files this will fail
+	// unless there's something to add. Verify the function handles gracefully
+	// (either succeeds with empty commit or returns an error — either is acceptable,
+	// but it must not panic).
+	_ = git.InitIfNeeded(dir) // result is not asserted; just must not panic
+}
+
+// commitCount returns the number of commits in the repository.
+func commitCount(t *testing.T, dir string) int {
+	t.Helper()
+	cmd := newCmd(dir, "git", "rev-list", "--count", "HEAD")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git rev-list: %v\n%s", err, out)
+	}
+	var n int
+	if _, err := fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &n); err != nil {
+		t.Fatalf("parse commit count: %v", err)
+	}
+	return n
 }
