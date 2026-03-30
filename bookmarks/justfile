@@ -1,11 +1,21 @@
-build:
-    go build -o bin/bookmarks ./cmd/bookmarks
+export PATH := "/opt/homebrew/opt/postgresql@17/bin:/opt/homebrew/lib/ruby/gems/4.0.0/bin:/opt/homebrew/opt/ruby/bin:" + env_var("PATH")
 
-install: build
-    cp bin/bookmarks ~/.local/bin/bookmarks
+rails_dir := "rails_app"
+
+build:
+    cd {{rails_dir}} && bundle exec rake assets:precompile
+
+install:
+    @echo "Run 'just server' to start the Rails application"
 
 test:
-    go test ./...
+    cd {{rails_dir}} && bin/rails test
 
 vet:
-    go vet ./...
+    cd {{rails_dir}} && bin/rubocop
+
+server:
+    cd {{rails_dir}} && bin/rails server
+
+db-setup:
+    cd {{rails_dir}} && bin/rails db:create db:migrate
