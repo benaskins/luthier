@@ -17,16 +17,5 @@ autoresearch/run-debug.log
 autoresearch/session-*.log
 autoresearch/results.tsv
 
-# Maestro build artifacts
-maestro/maestro
-maestro/bin/
-
-# Rails/Phoenix generated files
-*/tmp/
-*/log/
-*/.bundle/
-*/db/schema.rb
-*/bootsnap/
-
 # OS
 .DS_Store
