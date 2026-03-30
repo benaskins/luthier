@@ -8,23 +8,33 @@ import (
 	"path/filepath"
 )
 
-// DetectCommand finds the verification command for a project.
-func DetectCommand(projectDir string) (string, error) {
-	checks := []struct {
-		file string
-		cmd  string
-	}{
-		{"justfile", "just test"},
-		{"Makefile", "make test"},
-		{"mix.exs", "mix compile && mix test"},
-		{"Gemfile", "bundle exec rails test"},
-		{"package.json", "npm test"},
-		{"go.mod", "go vet ./... && go test ./..."},
-	}
+// detector maps a filename to the command used to verify that project type.
+type detector struct {
+	file string
+	cmd  string
+}
 
-	for _, c := range checks {
-		if _, err := os.Stat(filepath.Join(projectDir, c.file)); err == nil {
-			return c.cmd, nil
+// detectors is the ordered list of project file detectors. First match wins.
+var detectors = []detector{
+	{"justfile", "just test"},
+	{"Justfile", "just test"},
+	{"Makefile", "make test"},
+	{"GNUmakefile", "make test"},
+	{"mix.exs", "mix compile && mix test"},
+	{"Gemfile", "bundle exec rake test"},
+	{"Cargo.toml", "cargo test"},
+	{"pyproject.toml", "python -m pytest"},
+	{"package.json", "npm test"},
+	{"go.mod", "go vet ./... && go test ./..."},
+}
+
+// DetectCommand finds the verification command for a project by scanning for
+// well-known build tool files. Returns an error if no recognisable build tool
+// is found.
+func DetectCommand(projectDir string) (string, error) {
+	for _, d := range detectors {
+		if _, err := os.Stat(filepath.Join(projectDir, d.file)); err == nil {
+			return d.cmd, nil
 		}
 	}
 
