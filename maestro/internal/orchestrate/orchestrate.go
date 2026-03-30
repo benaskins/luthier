@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	fact "github.com/benaskins/axon-fact"
 	"github.com/benaskins/maestro/internal/agent"
 	gitpkg "github.com/benaskins/maestro/internal/git"
+	"github.com/benaskins/maestro/internal/logger"
 	"github.com/benaskins/maestro/internal/plan"
 	"github.com/benaskins/maestro/internal/review"
 	"github.com/benaskins/maestro/internal/verify"
@@ -39,6 +39,9 @@ type Config struct {
 	// EventStream is the stream name for the event store.
 	// Defaults to "orchestration" if empty.
 	EventStream string
+	// Logger controls progress output. Defaults to an Info-level logger on
+	// os.Stderr when nil. Use logger.New(logger.LevelSilent, nil) to suppress.
+	Logger *logger.Logger
 }
 
 // StepResult records what happened during a single step's execution.
@@ -63,6 +66,11 @@ type Result struct {
 
 // Run executes the plan steps in order.
 func Run(cfg Config) (*Result, error) {
+	log := cfg.Logger
+	if log == nil {
+		log = logger.Default()
+	}
+
 	steps, err := plan.ReadFromDir(cfg.ProjectDir)
 	if err != nil {
 		return nil, fmt.Errorf("read plan: %w", err)
@@ -116,7 +124,7 @@ func Run(cfg Config) (*Result, error) {
 				Title:  step.Title,
 				Status: StatusSkipped,
 			})
-			fmt.Fprintf(os.Stderr, "  [%d/%d] %s (already committed, skipping)\n", step.Number, result.Total, step.Title)
+			log.Info("  [%d/%d] %s (already committed, skipping)\n", step.Number, result.Total, step.Title)
 			continue
 		}
 
@@ -129,18 +137,18 @@ func Run(cfg Config) (*Result, error) {
 					Title:  step.Title,
 					Status: StatusSkipped,
 				})
-				fmt.Fprintf(os.Stderr, "  [%d/%d] %s (skipping, resuming from %s)\n", step.Number, result.Total, step.Title, cfg.ResumeFrom)
+				log.Info("  [%d/%d] %s (skipping, resuming from %s)\n", step.Number, result.Total, step.Title, cfg.ResumeFrom)
 				continue
 			}
 			resuming = false
 		}
 
-		fmt.Fprintf(os.Stderr, "\n  [%d/%d] %s\n", step.Number, result.Total, step.Title)
+		log.Info("\n  [%d/%d] %s\n", step.Number, result.Total, step.Title)
 
 		if cfg.DryRun {
-			fmt.Fprintf(os.Stderr, "    dry-run: would delegate to coding agent\n")
-			fmt.Fprintf(os.Stderr, "    dry-run: would run: %s\n", verifyCmd)
-			fmt.Fprintf(os.Stderr, "    dry-run: would commit: %s\n", step.Commit)
+			log.Info("    dry-run: would delegate to coding agent\n")
+			log.Info("    dry-run: would run: %s\n", verifyCmd)
+			log.Info("    dry-run: would commit: %s\n", step.Commit)
 			result.Completed++
 			result.Steps = append(result.Steps, StepResult{
 				Number:   step.Number,
@@ -152,7 +160,7 @@ func Run(cfg Config) (*Result, error) {
 		}
 
 		stepStart := time.Now()
-		attempts, err := executeStep(cfg, *step, verifyCmd)
+		attempts, err := executeStep(cfg, log, *step, verifyCmd)
 		stepDur := time.Since(stepStart)
 
 		if err != nil {
@@ -183,7 +191,7 @@ func Run(cfg Config) (*Result, error) {
 	return result, nil
 }
 
-func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
+func executeStep(cfg Config, log *logger.Logger, step plan.Step, verifyCmd string) (int, error) {
 	ctx := context.Background()
 	stream := cfg.EventStream
 
@@ -196,7 +204,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 
 	for attempt := 1; attempt <= cfg.MaxRetries; attempt++ {
 		if attempt > 1 {
-			fmt.Fprintf(os.Stderr, "    retry %d/%d\n", attempt, cfg.MaxRetries)
+			log.Info("    retry %d/%d\n", attempt, cfg.MaxRetries)
 			emit(ctx, cfg.EventStore, stream, EventRetryAttempt, RetryAttemptData{
 				StepNumber: step.Number,
 				Attempt:    attempt,
@@ -204,7 +212,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 		}
 
 		// Delegate to coding agent
-		fmt.Fprintf(os.Stderr, "    delegating to coding agent...\n")
+		log.Info("    delegating to coding agent...\n")
 		emit(ctx, cfg.EventStore, stream, EventAgentInvoked, AgentInvokedData{
 			StepNumber:  step.Number,
 			Attempt:     attempt,
@@ -213,7 +221,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 		agentOut, err := cfg.Agent.Implement(cfg.ProjectDir, step, feedback)
 		if err != nil {
 			feedback = fmt.Sprintf("Agent error: %s\nOutput: %s", err, agentOut)
-			fmt.Fprintf(os.Stderr, "    agent failed: %v\n", err)
+			log.Warn("agent failed: %v\n", err)
 			emit(ctx, cfg.EventStore, stream, EventAgentFailed, AgentFailedData{
 				StepNumber: step.Number,
 				Attempt:    attempt,
@@ -227,7 +235,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 		})
 
 		// Run verification
-		fmt.Fprintf(os.Stderr, "    verifying: %s\n", verifyCmd)
+		log.Debug("    verifying: %s\n", verifyCmd)
 		emit(ctx, cfg.EventStore, stream, EventVerificationRun, VerificationRunData{
 			StepNumber: step.Number,
 			Attempt:    attempt,
@@ -236,14 +244,14 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 		verifyOut, err := verify.Run(cfg.ProjectDir, verifyCmd)
 		if err != nil {
 			feedback = fmt.Sprintf("Verification failed:\n%s", verifyOut)
-			fmt.Fprintf(os.Stderr, "    verification failed\n")
+			log.Warn("verification failed: %v\n", err)
 			emit(ctx, cfg.EventStore, stream, EventVerificationFailed, VerificationFailedData{
 				StepNumber: step.Number,
 				Attempt:    attempt,
 			})
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "    verification passed\n")
+		log.Info("    verification passed\n")
 		emit(ctx, cfg.EventStore, stream, EventVerificationPassed, VerificationPassedData{
 			StepNumber: step.Number,
 			Attempt:    attempt,
@@ -254,7 +262,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 			diff, diffErr := gitpkg.Diff(cfg.ProjectDir)
 			if diffErr != nil {
 				feedback = fmt.Sprintf("Failed to get diff for review: %s", diffErr)
-				fmt.Fprintf(os.Stderr, "    could not get diff: %v\n", diffErr)
+				log.Warn("could not get diff: %v\n", diffErr)
 				continue
 			}
 
@@ -265,7 +273,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 			reviewResult, reviewErr := cfg.Reviewer.Review(ctx, diff, step)
 			if reviewErr != nil {
 				// Review errors are non-fatal: log and proceed to commit.
-				fmt.Fprintf(os.Stderr, "    review error (skipping): %v\n", reviewErr)
+				log.Warn("review error (skipping): %v\n", reviewErr)
 				emit(ctx, cfg.EventStore, stream, EventReviewErrored, ReviewErroredData{
 					StepNumber: step.Number,
 					Attempt:    attempt,
@@ -273,7 +281,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 				})
 			} else if !reviewResult.Passed {
 				feedback = fmt.Sprintf("Semantic review failed: %s", reviewResult.Reason)
-				fmt.Fprintf(os.Stderr, "    review failed: %s\n", reviewResult.Reason)
+				log.Warn("review failed: %s\n", reviewResult.Reason)
 				emit(ctx, cfg.EventStore, stream, EventReviewFailed, ReviewFailedData{
 					StepNumber: step.Number,
 					Attempt:    attempt,
@@ -281,7 +289,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 				})
 				continue
 			} else {
-				fmt.Fprintf(os.Stderr, "    review passed: %s\n", reviewResult.Reason)
+				log.Info("    review passed: %s\n", reviewResult.Reason)
 				emit(ctx, cfg.EventStore, stream, EventReviewPassed, ReviewPassedData{
 					StepNumber: step.Number,
 					Attempt:    attempt,
@@ -293,12 +301,13 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 		// Commit
 		if err := gitpkg.Commit(cfg.ProjectDir, step.Commit); err != nil {
 			if err == gitpkg.ErrNoChanges {
-				fmt.Fprintf(os.Stderr, "    nothing to commit for: %s\n", step.Commit)
+				log.Info("    nothing to commit for: %s\n", step.Commit)
 				emit(ctx, cfg.EventStore, stream, EventCommitSkipped, CommitSkippedData{
 					StepNumber: step.Number,
 					Message:    step.Commit,
 				})
 			} else {
+				log.Error("commit failed: %v\n", err)
 				emit(ctx, cfg.EventStore, stream, EventCommitFailed, CommitFailedData{
 					StepNumber: step.Number,
 					Message:    step.Commit,
@@ -313,7 +322,7 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) (int, error) {
 				return attempt, fmt.Errorf("commit: %w", err)
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "    committed: %s\n", step.Commit)
+			log.Info("    committed: %s\n", step.Commit)
 			emit(ctx, cfg.EventStore, stream, EventCommitSucceeded, CommitSucceededData{
 				StepNumber: step.Number,
 				Message:    step.Commit,

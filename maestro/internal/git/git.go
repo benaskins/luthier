@@ -63,7 +63,11 @@ func IsClean(projectDir string) (bool, error) {
 
 // Diff returns the staged + unstaged diff.
 func Diff(projectDir string) (string, error) {
-	return output(projectDir, "git", "diff", "HEAD")
+	out, err := output(projectDir, "git", "diff", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("git diff: %w", err)
+	}
+	return out, nil
 }
 
 // IsStepCommitted checks if a commit message already exists in the git log.
@@ -82,10 +86,10 @@ func InitIfNeeded(projectDir string) error {
 			return fmt.Errorf("git init: %w", err)
 		}
 		if err := run(projectDir, "git", "add", "-A"); err != nil {
-			return err
+			return fmt.Errorf("git add: %w", err)
 		}
 		if err := run(projectDir, "git", "commit", "-m", "feat: initial scaffold from luthier"); err != nil {
-			return err
+			return fmt.Errorf("git commit: %w", err)
 		}
 	}
 	return nil
