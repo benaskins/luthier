@@ -1,0 +1,25 @@
+module github.com/benaskins/scaffold-agent
+
+go 1.26.1
+
+require (
+	github.com/benaskins/axon-loop v0.0.0
+	github.com/benaskins/axon-talk v0.5.1
+	github.com/benaskins/axon-tool v0.1.6
+)
+
+require (
+	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
+	github.com/go-shiori/dom v0.0.0-20230515143342-73569d674e1c // indirect
+	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0 // indirect
+	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
+	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
+)
+
+replace (
+	github.com/benaskins/axon-loop => /Users/benaskins/dev/lamina/axon-loop
+	github.com/benaskins/axon-talk => /Users/benaskins/dev/lamina/axon-talk
+	github.com/benaskins/axon-tool => /Users/benaskins/dev/lamina/axon-tool
+)

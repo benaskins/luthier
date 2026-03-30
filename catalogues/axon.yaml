@@ -3,6 +3,9 @@ language: go
 version: "1.26"
 description: Go toolkit for AI-powered services on Apple Silicon. Process supervision via aurelia.
 
+scaffold_command: "mkdir -p {{.Name}}/cmd/{{.Name}} && cd {{.Name}} && go mod init github.com/benaskins/{{.Name}}"
+verify_command: "cd {{.Name}} && go mod tidy && go build ./..."
+
 components:
   - name: axon
     class: platform

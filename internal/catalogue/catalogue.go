@@ -16,14 +16,32 @@ var promptTemplate string
 
 // Catalogue represents a framework/stack catalogue loaded from YAML.
 type Catalogue struct {
-	Name        string      `yaml:"name"`
-	Language    string      `yaml:"language"`
-	Version     string      `yaml:"version"`
-	Description string      `yaml:"description"`
-	Components  []Component `yaml:"components"`
-	Patterns    []Pattern   `yaml:"patterns"`
-	FileConvs   []FileConv  `yaml:"file_conventions"`
-	BoundaryN   string      `yaml:"boundary_notes"`
+	Name            string      `yaml:"name"`
+	Language        string      `yaml:"language"`
+	Version         string      `yaml:"version"`
+	Description     string      `yaml:"description"`
+	ScaffoldCommand string      `yaml:"scaffold_command"`
+	VerifyCommand   string      `yaml:"verify_command"`
+	Components      []Component `yaml:"components"`
+	Patterns        []Pattern   `yaml:"patterns"`
+	FileConvs       []FileConv  `yaml:"file_conventions"`
+	BoundaryN       string      `yaml:"boundary_notes"`
+}
+
+// RenderCommand renders a template command string with the project name.
+func (c *Catalogue) RenderCommand(tmplStr string, name string) (string, error) {
+	if tmplStr == "" {
+		return "", nil
+	}
+	tmpl, err := template.New("cmd").Parse(tmplStr)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, struct{ Name string }{name}); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 type Component struct {

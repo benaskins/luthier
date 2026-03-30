@@ -3,6 +3,9 @@ language: ruby
 version: "8.0"
 description: Full-stack web framework for Ruby with convention over configuration.
 
+scaffold_command: "rails new {{.Name}} --database=postgresql --skip-git"
+verify_command: "cd {{.Name}} && bundle install && bin/rails db:create 2>/dev/null; bundle exec rails runner 'puts :ok'"
+
 components:
   # Core (always available)
   - name: rails

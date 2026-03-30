@@ -3,6 +3,9 @@ language: elixir
 version: "1.8"
 description: Productive web framework for Elixir with real-time capabilities via channels and LiveView.
 
+scaffold_command: "mix phx.new {{.Name}} --database postgres --no-install"
+verify_command: "cd {{.Name}} && mix deps.get && mix compile"
+
 components:
   # Core (always available with Phoenix)
   - name: phoenix

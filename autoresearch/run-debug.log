@@ -1,0 +1,42 @@
++ set -euo pipefail
++++ dirname autoresearch/eval.sh
+++ cd autoresearch
+++ pwd
++ SCRIPT_DIR=/Users/benaskins/dev/luthier/autoresearch
+++ cd /Users/benaskins/dev/luthier/autoresearch/..
+++ pwd
++ LUTHIER_DIR=/Users/benaskins/dev/luthier
++ PORT=8091
++ MODEL=/Users/benaskins/models/mlx/Qwen3.5-122B-A10B-5bit
++ OUTPUT_DIR=/Users/benaskins/dev/luthier/coding-agent
++ REQUIRED_MODULES='axon-loop axon-talk axon-tool'
++ ACCEPTED_MODULES=axon-fact
++ REFERENCE_PHASES='scaffold|setup|repo analysis|structured|spec writer|template|file|generation gap|resolution|conversation wire|integrate|main'
++ rm -rf /Users/benaskins/dev/luthier/coding-agent
++ echo '>>> Building luthier...'
+>>> Building luthier...
++ cd /Users/benaskins/dev/luthier
++ go build -o bin/luthier ./cmd/luthier
++ '[' 0 -ne 0 ']'
++ echo '>>> Running luthier against PRD...'
+>>> Running luthier against PRD...
+++ cd /Users/benaskins/dev/luthier
+++ LUTHIER_PROVIDER=local
+++ LUTHIER_LOCAL_URL=http://localhost:8091
+++ LUTHIER_MODEL=/Users/benaskins/models/mlx/Qwen3.5-122B-A10B-5bit
+++ bin/luthier fixtures/coding-agent-prd.md
++ run_output=$'luthier: analysing PRD…\nluthier: writing scaffold to coding-agent/\nluthier: verifying scaffold builds…\ncoding-agent'
++ compiles=0
++ '[' -d /Users/benaskins/dev/luthier/coding-agent ']'
++ echo '>>> Scaffold generated, checking compilation...'
+>>> Scaffold generated, checking compilation...
++ cd /Users/benaskins/dev/luthier/coding-agent
++ go build ./...
++ compiles=1
++ echo '>>> Compiles: YES'
+>>> Compiles: YES
+++ echo $'luthier: analysing PRD…\nluthier: writing scaffold to coding-agent/\nluthier: verifying scaffold builds…\ncoding-agent'
+++ grep 'tool: select_module'
+++ sed 's/.*select_module(\(.*\))/\1/'
+++ sort
++ selected_modules=

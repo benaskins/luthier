@@ -1,0 +1,11 @@
+build:
+    go build -o bin/maestro ./cmd/maestro
+
+install: build
+    cp bin/maestro ~/.local/bin/maestro
+
+test:
+    go test ./...
+
+vet:
+    go vet ./...

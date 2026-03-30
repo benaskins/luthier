@@ -1,0 +1,11 @@
+build:
+    go build -o bin/prd-scaffold ./cmd/prd-scaffold
+
+install: build
+    cp bin/prd-scaffold ~/.local/bin/prd-scaffold
+
+test:
+    go test ./...
+
+vet:
+    go vet ./...

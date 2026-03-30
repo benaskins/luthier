@@ -1,0 +1,193 @@
+{
+  "runs": 3,
+  "module_score": 0.7142857142857143,
+  "boundary_score": 0.5714285714285714,
+  "gap_score": 0,
+  "plan_step_score": 0.6666666666666666,
+  "overall_score": 0.488095238095238,
+  "module_details": {
+    "unanimous": [
+      "axon",
+      "axon-eval",
+      "axon-loop",
+      "axon-talk",
+      "axon-tool"
+    ],
+    "partial": [
+      {
+        "name": "axon-fact",
+        "count": 2,
+        "total": 3
+      }
+    ],
+    "unique": [
+      {
+        "name": "axon-task",
+        "run": 2
+      }
+    ],
+    "count_range": [
+      6,
+      6
+    ]
+  },
+  "boundary_details": {
+    "count_range": [
+      4,
+      7
+    ]
+  },
+  "gap_details": {
+    "count_range": [
+      0,
+      2
+    ],
+    "all_questions": [
+      "How should the output directory path be determined: auto-generated from PRD title in current directory, specified via --output flag, or derived from input filename?",
+      "Which LLM provider(s) should be supported by default (Anthropic, Ollama, Cloudflare Workers AI), and should the user be able to configure this via CLI flag, environment variable, or config file?"
+    ]
+  },
+  "plan_details": {
+    "count_range": [
+      10,
+      15
+    ]
+  },
+  "raw_specs": [
+    {
+      "name": "coding-agent-scaffold",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-talk",
+        "axon-tool"
+      ],
+      "boundaries": [
+        {
+          "from": "cli-entrypoint",
+          "to": "axon-loop",
+          "type": "non-det"
+        },
+        {
+          "from": "axon-loop",
+          "to": "axon-talk",
+          "type": "non-det"
+        },
+        {
+          "from": "axon-loop",
+          "to": "axon-tool",
+          "type": "non-det"
+        },
+        {
+          "from": "axon-tool",
+          "to": "file-system",
+          "type": "det"
+        },
+        {
+          "from": "axon-tool",
+          "to": "go-compiler",
+          "type": "det"
+        },
+        {
+          "from": "axon-fact",
+          "to": "local-cache",
+          "type": "det"
+        },
+        {
+          "from": "axon-loop",
+          "to": "axon-eval",
+          "type": "non-det"
+        }
+      ],
+      "gaps": 2,
+      "plan_steps": 10
+    },
+    {
+      "name": "coding-agent-scaffold",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-loop",
+        "axon-talk",
+        "axon-task",
+        "axon-tool"
+      ],
+      "boundaries": [
+        {
+          "from": "axon-loop",
+          "to": "axon-talk",
+          "type": "det"
+        },
+        {
+          "from": "axon-loop",
+          "to": "axon-tool",
+          "type": "det"
+        },
+        {
+          "from": "axon-task",
+          "to": "axon-tool",
+          "type": "det"
+        },
+        {
+          "from": "axon-eval",
+          "to": "axon-loop",
+          "type": "non-det"
+        }
+      ],
+      "gaps": 0,
+      "plan_steps": 14
+    },
+    {
+      "name": "coding-agent-scaffold",
+      "modules": [
+        "axon",
+        "axon-eval",
+        "axon-fact",
+        "axon-loop",
+        "axon-talk",
+        "axon-tool"
+      ],
+      "boundaries": [
+        {
+          "from": "cli",
+          "to": "axon-loop",
+          "type": "non-det"
+        },
+        {
+          "from": "axon-loop",
+          "to": "axon-talk",
+          "type": "non-det"
+        },
+        {
+          "from": "axon-loop",
+          "to": "axon-tool",
+          "type": "non-det"
+        },
+        {
+          "from": "cli",
+          "to": "axon",
+          "type": "det"
+        },
+        {
+          "from": "cli",
+          "to": "axon-eval",
+          "type": "non-det"
+        },
+        {
+          "from": "cli",
+          "to": "axon-fact",
+          "type": "det"
+        },
+        {
+          "from": "axon-tool",
+          "to": "axon-fact",
+          "type": "det"
+        }
+      ],
+      "gaps": 0,
+      "plan_steps": 15
+    }
+  ]
+}

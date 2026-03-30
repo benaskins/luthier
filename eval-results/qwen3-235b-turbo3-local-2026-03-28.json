@@ -1,0 +1,4 @@
+luthier-eval: running 3 analyses against fixtures/coding-agent-prd.md (provider: local, model: qwen3-235b)
+  run 1/3… FAILED: analysis: model did not call finalize
+  run 2/3… FAILED: analysis: model did not call finalize
+  run 3/3… 
