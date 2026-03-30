@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -348,6 +349,54 @@ func TestRun_DryRunDoesNotCallAgent(t *testing.T) {
 	}
 	if a.calls != 0 {
 		t.Errorf("agent should not be called in dry-run mode, got %d calls", a.calls)
+	}
+}
+
+func gitCommitCount(t *testing.T, dir string) int {
+	t.Helper()
+	cmd := exec.Command("git", "rev-list", "--count", "HEAD")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git rev-list: %v", err)
+	}
+	count, _ := strconv.Atoi(strings.TrimSpace(string(out)))
+	return count
+}
+
+func TestRun_DryRunMakesNoGitCommit(t *testing.T) {
+	planContent := `## Step 1 — first step
+
+First thing.
+
+Commit: ` + "`feat: first step`" + `
+
+## Step 2 — second step
+
+Second thing.
+
+Commit: ` + "`feat: second step`"
+
+	dir := newTestProject(t, planContent)
+	initialCount := gitCommitCount(t, dir)
+
+	result, err := Run(Config{
+		ProjectDir: dir,
+		Agent:      &countdownAgent{},
+		VerifyCmd:  "true",
+		DryRun:     true,
+		MaxRetries: 3,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.Completed != 2 {
+		t.Errorf("Completed = %d, want 2", result.Completed)
+	}
+
+	afterCount := gitCommitCount(t, dir)
+	if afterCount != initialCount {
+		t.Errorf("dry-run made %d new git commits, want 0", afterCount-initialCount)
 	}
 }
 

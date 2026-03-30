@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -153,6 +154,55 @@ func TestRunCommandSeparatesStreams(t *testing.T) {
 	}
 	if !strings.Contains(result.Stderr, "stderr") {
 		t.Errorf("stderr %q missing 'stderr'", result.Stderr)
+	}
+}
+
+func TestRunCommandWithWriter_StreamsOutput(t *testing.T) {
+	var buf bytes.Buffer
+	result, err := runCommandWithWriter("", &buf, "echo", "hello stream")
+	if err != nil {
+		t.Fatalf("runCommandWithWriter: %v", err)
+	}
+	if strings.TrimSpace(result.Stdout) != "hello stream" {
+		t.Errorf("stdout = %q, want 'hello stream'", result.Stdout)
+	}
+	if strings.TrimSpace(buf.String()) != "hello stream" {
+		t.Errorf("streamed output = %q, want 'hello stream'", buf.String())
+	}
+}
+
+func TestRunCommandWithWriter_NilWriterBuffersOnly(t *testing.T) {
+	result, err := runCommandWithWriter("", nil, "echo", "buffered only")
+	if err != nil {
+		t.Fatalf("runCommandWithWriter: %v", err)
+	}
+	if strings.TrimSpace(result.Stdout) != "buffered only" {
+		t.Errorf("stdout = %q, want 'buffered only'", result.Stdout)
+	}
+}
+
+func TestClaudeVerbose_StreamsToWriter(t *testing.T) {
+	if _, err := exec.LookPath("claude"); err != nil {
+		t.Skip("claude not found in PATH, skipping integration test")
+	}
+
+	dir := t.TempDir()
+	step := plan.Step{
+		Number:      1,
+		Title:       "create a file",
+		Description: "Create a file named out.txt containing the text 'verbose test'.",
+		Commit:      "feat: create out.txt",
+	}
+
+	var buf bytes.Buffer
+	a := &Claude{Verbose: true, Out: &buf}
+	_, err := a.Implement(dir, step, "")
+	if err != nil {
+		t.Fatalf("Implement: %v", err)
+	}
+
+	if buf.Len() == 0 {
+		t.Error("verbose mode produced no streaming output")
 	}
 }
 

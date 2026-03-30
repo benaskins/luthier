@@ -4,6 +4,8 @@ package agent
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -26,12 +28,23 @@ type ExecResult struct {
 
 // runCommand executes a command in the given directory and captures stdout/stderr separately.
 func runCommand(dir string, name string, args ...string) (ExecResult, error) {
+	return runCommandWithWriter(dir, nil, name, args...)
+}
+
+// runCommandWithWriter executes a command, capturing stdout/stderr, and optionally
+// teeing output to w in real-time for streaming. Pass nil to disable streaming.
+func runCommandWithWriter(dir string, w io.Writer, name string, args ...string) (ExecResult, error) {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	if w != nil {
+		cmd.Stdout = io.MultiWriter(&stdout, w)
+		cmd.Stderr = io.MultiWriter(&stderr, w)
+	} else {
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+	}
 
 	start := time.Now()
 	err := cmd.Run()
@@ -53,13 +66,26 @@ func runCommand(dir string, name string, args ...string) (ExecResult, error) {
 // Claude delegates to Claude Code via `claude -p`.
 type Claude struct {
 	Verbose bool
+	// Out is the writer for streaming agent output when Verbose is true.
+	// Defaults to os.Stderr when nil.
+	Out io.Writer
 }
 
 // Implement sends the step to Claude Code and returns the output.
+// When Verbose is true, output is streamed in real-time to Out (or os.Stderr).
 func (c *Claude) Implement(projectDir string, step plan.Step, feedback string) (string, error) {
 	prompt := buildPrompt(step, feedback)
 
-	result, err := runCommand(projectDir, "claude",
+	var streamTo io.Writer
+	if c.Verbose {
+		if c.Out != nil {
+			streamTo = c.Out
+		} else {
+			streamTo = os.Stderr
+		}
+	}
+
+	result, err := runCommandWithWriter(projectDir, streamTo, "claude",
 		"-p", prompt,
 		"--allowedTools", "Bash,Read,Write,Edit,Grep,Glob",
 	)

@@ -121,9 +121,6 @@ func executeStep(cfg Config, step plan.Step, verifyCmd string) error {
 		// Delegate to coding agent
 		fmt.Fprintf(os.Stderr, "    delegating to coding agent...\n")
 		agentOut, err := cfg.Agent.Implement(cfg.ProjectDir, step, feedback)
-		if cfg.Verbose && agentOut != "" {
-			fmt.Fprintf(os.Stderr, "    agent output:\n%s\n", agentOut)
-		}
 		if err != nil {
 			feedback = fmt.Sprintf("Agent error: %s\nOutput: %s", err, agentOut)
 			fmt.Fprintf(os.Stderr, "    agent failed: %v\n", err)
