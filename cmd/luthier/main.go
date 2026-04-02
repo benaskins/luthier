@@ -335,7 +335,7 @@ func newClient(provider string) talk.LLMClient {
 		if localURL == "" {
 			localURL = "https://models.hestia.internal"
 		}
-		return openai.NewClient(localURL, "")
+		return openai.NewClient(localURL, os.Getenv("LUTHIER_LOCAL_TOKEN"))
 
 	default: // anthropic
 		apiKey := os.Getenv("ANTHROPIC_API_KEY")
