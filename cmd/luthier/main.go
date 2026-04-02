@@ -30,6 +30,7 @@ func main() {
 
 func run() error {
 	cataloguePath := flag.String("catalogue", "", "path to catalogue YAML (default: built-in axon catalogue)")
+	outFlag := flag.String("out", "", "output directory (default: ./<project-name>)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -94,6 +95,9 @@ func run() error {
 	composed := composeFromSpec(spec)
 
 	outDir := filepath.Join(".", spec.Name)
+	if *outFlag != "" {
+		outDir = *outFlag
+	}
 	fmt.Fprintf(os.Stderr, "luthier: writing scaffold to %s/\n", outDir)
 	opts := &writer.Options{
 		Composed:      composed,
