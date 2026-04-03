@@ -20,10 +20,12 @@ var templateFS embed.FS
 // templateData is the common data passed to every template.
 type templateData struct {
 	Name        string
+	Type        analysis.ProjectType
 	Description string
 	Modules     []analysis.ModuleSelection
 	Boundaries  []analysis.Boundary
 	PlanSteps   []analysis.PlanStep
+	Constraints []string
 	Requires    []string // go.mod require paths from snippets
 	Date        string
 	Catalogue   *catalogue.Catalogue // nil when no catalogue was used
@@ -77,10 +79,12 @@ func Write(spec *analysis.ScaffoldSpec, outDir string, opts *Options) error {
 
 	data := templateData{
 		Name:        spec.Name,
+		Type:        spec.Type,
 		Description: descriptionFromSpec(spec),
 		Modules:     spec.Modules,
 		Boundaries:  spec.Boundaries,
 		PlanSteps:   spec.PlanSteps,
+		Constraints: spec.Constraints,
 		Requires:    requires,
 		Date:        time.Now().Format("2006-01-02"),
 		Catalogue:   opts.Catalogue,
@@ -98,20 +102,22 @@ func Write(spec *analysis.ScaffoldSpec, outDir string, opts *Options) error {
 		{"plan.md.tmpl", filepath.Join("plans", data.Date+"-initial-build.md")},
 	}
 
-	// main.go: use composed source if available, otherwise fall back to template
-	mainPath := filepath.Join(outDir, "cmd", spec.Name, "main.go")
-	if composed != nil && composed.MainGo != "" {
-		if err := os.MkdirAll(filepath.Dir(mainPath), 0o755); err != nil {
-			return fmt.Errorf("writer: mkdir %s: %w", filepath.Dir(mainPath), err)
+	// main.go: skip for libraries, use composed source or template for services/CLIs.
+	if spec.Type != analysis.ProjectLibrary {
+		mainPath := filepath.Join(outDir, "cmd", spec.Name, "main.go")
+		if composed != nil && composed.MainGo != "" {
+			if err := os.MkdirAll(filepath.Dir(mainPath), 0o755); err != nil {
+				return fmt.Errorf("writer: mkdir %s: %w", filepath.Dir(mainPath), err)
+			}
+			if err := os.WriteFile(mainPath, []byte(composed.MainGo), 0o644); err != nil {
+				return fmt.Errorf("writer: write main.go: %w", err)
+			}
+		} else {
+			files = append(files, struct {
+				tmplName string
+				path     string
+			}{"main.go.tmpl", filepath.Join("cmd", spec.Name, "main.go")})
 		}
-		if err := os.WriteFile(mainPath, []byte(composed.MainGo), 0o644); err != nil {
-			return fmt.Errorf("writer: write main.go: %w", err)
-		}
-	} else {
-		files = append(files, struct {
-			tmplName string
-			path     string
-		}{"main.go.tmpl", filepath.Join("cmd", spec.Name, "main.go")})
 	}
 
 	for _, f := range files {

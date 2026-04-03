@@ -4,6 +4,11 @@
 
 {{.Description}}
 
+## Module
+
+- Module path: `github.com/benaskins/{{.Name}}`
+- Project type: {{.Type}}
+
 ## Build & Run
 
 ```bash
@@ -13,7 +18,12 @@ just test      # run tests
 just vet       # lint
 ```
 
-## Plan
+{{if .Constraints}}## Constraints
+
+These constraints are extracted from the PRD. Follow them strictly during implementation.
+
+{{range .Constraints}}- {{.}}
+{{end}}{{end}}## Plan
 
 See `plans/` for commit-sized implementation steps.
 {{if .Catalogue}}

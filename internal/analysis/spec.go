@@ -2,13 +2,24 @@
 // into a ScaffoldSpec.
 package analysis
 
+// ProjectType indicates whether the scaffold is a library or a runnable service/CLI.
+type ProjectType string
+
+const (
+	ProjectLibrary ProjectType = "library"
+	ProjectService ProjectType = "service"
+	ProjectCLI     ProjectType = "cli"
+)
+
 // ScaffoldSpec is the machine-readable output of the analysis call.
 type ScaffoldSpec struct {
-	Name       string            `json:"name"`
-	Modules    []ModuleSelection `json:"modules"`
-	Boundaries []Boundary        `json:"boundaries"`
-	PlanSteps  []PlanStep        `json:"plan_steps"`
-	Gaps       []Gap             `json:"gaps"`
+	Name        string            `json:"name"`
+	Type        ProjectType       `json:"type"`
+	Modules     []ModuleSelection `json:"modules"`
+	Boundaries  []Boundary        `json:"boundaries"`
+	PlanSteps   []PlanStep        `json:"plan_steps"`
+	Constraints []string          `json:"constraints"`
+	Gaps        []Gap             `json:"gaps"`
 }
 
 // ModuleSelection records which axon module was selected and why.

@@ -33,14 +33,15 @@ func (b *SpecBuilder) Finalized() bool {
 	return b.done
 }
 
-// Tools returns the five analysis tools wired to this builder.
+// Tools returns the analysis tools wired to this builder.
 func (b *SpecBuilder) Tools() map[string]tool.ToolDef {
 	return map[string]tool.ToolDef{
-		"select_module":   b.selectModuleTool(),
-		"define_boundary": b.defineBoundaryTool(),
-		"add_plan_step":   b.addPlanStepTool(),
-		"raise_gap":       b.raiseGapTool(),
-		"finalize":        b.finalizeTool(),
+		"select_module":      b.selectModuleTool(),
+		"define_boundary":    b.defineBoundaryTool(),
+		"add_plan_step":      b.addPlanStepTool(),
+		"extract_constraint": b.extractConstraintTool(),
+		"raise_gap":          b.raiseGapTool(),
+		"finalize":           b.finalizeTool(),
 	}
 }
 
@@ -168,6 +169,33 @@ func (b *SpecBuilder) addPlanStepTool() tool.ToolDef {
 	}
 }
 
+func (b *SpecBuilder) extractConstraintTool() tool.ToolDef {
+	return tool.ToolDef{
+		Name:        "extract_constraint",
+		Description: "Extract a build constraint from the PRD that the coding agent must follow during implementation. These are things the agent must NOT do, patterns to avoid, or hard requirements on approach. Call once per constraint.",
+		Parameters: tool.ParameterSchema{
+			Type:     "object",
+			Required: []string{"constraint"},
+			Properties: map[string]tool.PropertySchema{
+				"constraint": {
+					Type:        "string",
+					Description: "A specific constraint the agent must follow. Examples: 'No ORM or query builder', 'No reflection for struct mapping', 'All SQL must be explicit, no SELECT *', 'Tests must use a running Postgres instance, not testcontainers'.",
+				},
+			},
+		},
+		Execute: func(ctx *tool.ToolContext, args map[string]any) tool.ToolResult {
+			constraint, _ := args["constraint"].(string)
+
+			b.mu.Lock()
+			b.spec.Constraints = append(b.spec.Constraints, constraint)
+			count := len(b.spec.Constraints)
+			b.mu.Unlock()
+
+			return tool.ToolResult{Content: fmt.Sprintf("Constraint %d extracted: %q", count, constraint)}
+		},
+	}
+}
+
 func (b *SpecBuilder) raiseGapTool() tool.ToolDef {
 	return tool.ToolDef{
 		Name:        "raise_gap",
@@ -206,26 +234,33 @@ func (b *SpecBuilder) raiseGapTool() tool.ToolDef {
 func (b *SpecBuilder) finalizeTool() tool.ToolDef {
 	return tool.ToolDef{
 		Name:        "finalize",
-		Description: "Signal that the analysis is complete. Call this after all modules, boundaries, plan steps, and gaps have been defined.",
+		Description: "Signal that the analysis is complete. Call this after all modules, boundaries, plan steps, constraints, and gaps have been defined.",
 		Parameters: tool.ParameterSchema{
 			Type:     "object",
-			Required: []string{"name"},
+			Required: []string{"name", "type"},
 			Properties: map[string]tool.PropertySchema{
 				"name": {
 					Type:        "string",
 					Description: "Short kebab-case project name derived from the PRD.",
 				},
+				"type": {
+					Type:        "string",
+					Description: "Project type: 'library' (no main, imported by other code), 'service' (HTTP server), or 'cli' (command-line tool).",
+					Enum:        []any{"library", "service", "cli"},
+				},
 			},
 		},
 		Execute: func(ctx *tool.ToolContext, args map[string]any) tool.ToolResult {
 			name, _ := args["name"].(string)
+			typ, _ := args["type"].(string)
 
 			b.mu.Lock()
 			b.spec.Name = name
+			b.spec.Type = ProjectType(typ)
 			b.done = true
 			b.mu.Unlock()
 
-			return tool.ToolResult{Content: fmt.Sprintf("Scaffold spec for %q finalized.", name)}
+			return tool.ToolResult{Content: fmt.Sprintf("Scaffold spec for %q (%s) finalized.", name, typ)}
 		},
 	}
 }
